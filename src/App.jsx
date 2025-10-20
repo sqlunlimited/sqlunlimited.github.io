@@ -25,6 +25,9 @@ const SQLPracticePlatform = () => {
   const [leftPanelWidth, setLeftPanelWidth] = useState(50);
   const [isDragging, setIsDragging] = useState(false);
 
+  // State for completed questions
+  const [completedQuestions, setCompletedQuestions] = useState(new Set());
+
   const containerRef = useRef(null);
 
   // Mobile detection
@@ -40,6 +43,84 @@ const SQLPracticePlatform = () => {
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
+
+  // Load completed questions from IndexedDB on mount
+  useEffect(() => {
+    const loadCompletedQuestions = async () => {
+      try {
+        const dbName = 'SQLPlatformDB';
+        const storeName = 'completedQuestions';
+        
+        const request = indexedDB.open(dbName, 1);
+        
+        request.onerror = () => {
+          console.error('Failed to open IndexedDB');
+        };
+        
+        request.onsuccess = (event) => {
+          const db = event.target.result;
+          const transaction = db.transaction([storeName], 'readonly');
+          const objectStore = transaction.objectStore(storeName);
+          const getAllRequest = objectStore.getAll();
+          
+          getAllRequest.onsuccess = () => {
+            const completedIds = getAllRequest.result.map(item => item.id);
+            if (completedIds.length > 0) {
+              setCompletedQuestions(new Set(completedIds));
+            }
+          };
+        };
+        
+        request.onupgradeneeded = (event) => {
+          const db = event.target.result;
+          if (!db.objectStoreNames.contains(storeName)) {
+            db.createObjectStore(storeName, { keyPath: 'id' });
+          }
+        };
+      } catch (err) {
+        console.error('Error loading completed questions:', err);
+      }
+    };
+    
+    loadCompletedQuestions();
+  }, []);
+
+  // Save completed questions to IndexedDB whenever they change
+  useEffect(() => {
+    const saveCompletedQuestions = async () => {
+      if (completedQuestions.size === 0) return;
+      
+      try {
+        const dbName = 'SQLPlatformDB';
+        const storeName = 'completedQuestions';
+        
+        const request = indexedDB.open(dbName, 1);
+        
+        request.onsuccess = (event) => {
+          const db = event.target.result;
+          const transaction = db.transaction([storeName], 'readwrite');
+          const objectStore = transaction.objectStore(storeName);
+          
+          // Clear existing data and add new
+          objectStore.clear();
+          Array.from(completedQuestions).forEach(id => {
+            objectStore.add({ id: id });
+          });
+        };
+        
+        request.onupgradeneeded = (event) => {
+          const db = event.target.result;
+          if (!db.objectStoreNames.contains(storeName)) {
+            db.createObjectStore(storeName, { keyPath: 'id' });
+          }
+        };
+      } catch (err) {
+        console.error('Error saving completed questions:', err);
+      }
+    };
+    
+    saveCompletedQuestions();
+  }, [completedQuestions]);
 
   // Add custom scrollbar styles
   useEffect(() => {
@@ -134,9 +215,11 @@ const SQLPracticePlatform = () => {
         try {
           const fileResponse = await fetch(file.download_url);
           const questionData = await fileResponse.json();
+          // Use the filename (without .json) as the persistent ID
+          const persistentId = file.name.replace('.json', '');
           loadedQuestions.push({
             ...questionData,
-            id: loadedQuestions.length + 1,
+            id: persistentId,
             filename: file.name
           });
         } catch (err) {
@@ -345,6 +428,20 @@ const SQLPracticePlatform = () => {
       
       setIsCorrect(matches);
       setResult(resultData);
+
+      // Track completion when user gets correct answer
+      if (matches) {
+        const currentQuestionId = questions[currentQuestion]?.id;
+        if (currentQuestionId !== undefined) {
+           if (!completedQuestions.has(currentQuestionId)) {
+             setCompletedQuestions(prevSet => {
+               const newSet = new Set(prevSet);
+               newSet.add(currentQuestionId);
+               return newSet;
+             });
+           }
+        }
+      }
     } catch (err) {
       setError(err.message);
       setResult(null);
@@ -366,17 +463,18 @@ const SQLPracticePlatform = () => {
     }
   };
 
-  const getDifficultyCircleColor = (difficulty) => {
-    switch(difficulty) {
-      case 'Easy': 
-        return 'bg-green-500 border-green-600';
-      case 'Medium': 
-        return 'bg-yellow-500 border-yellow-600';
-      case 'Hard': 
-        return 'bg-red-500 border-red-600';
-      default: 
-        return 'bg-gray-500 border-gray-600';
+  const getQuestionButtonColor = (q, isActive) => {
+    // If this question is completed, always show green
+    if (completedQuestions.has(q.id)) {
+      return isActive 
+        ? 'bg-green-500 border-green-600 ring-4 ring-green-400 scale-110 shadow-lg' 
+        : 'bg-green-500 border-green-600 hover:scale-105 shadow';
     }
+    
+    // Otherwise, show grey (inactive state)
+    return isActive
+      ? 'bg-gray-400 border-gray-500 ring-4 ring-blue-400 scale-110 shadow-lg'
+      : 'bg-gray-400 border-gray-500 hover:scale-105 shadow';
   };
 
   const renderTable = (data) => {
@@ -501,10 +599,10 @@ const SQLPracticePlatform = () => {
                 If you encounter any bugs, please fix them if you can — otherwise, message me on LinkedIn, and I'll talk to Claude to resolve it. 😄
               </p>
               <p className="text-sm break-words">
-                Platform code: https://github.com/sqlunlimited/sqlunlimited.github.io
+                Platform code: https://github.com/sqlunlimited/sqlunlimited.github.io  
               </p>
               <p className="text-sm break-words">
-                Connect with me: https://www.linkedin.com/in/sukhpreet41/
+                Connect with me: https://www.linkedin.com/in/sukhpreet41/  
               </p>
               <p className="text-sm text-gray-500 italic">
                 Built with love, caffeine, and a lot of trial and error! ☕✨
@@ -541,7 +639,7 @@ const SQLPracticePlatform = () => {
                 className="flex items-center gap-1 md:gap-2 px-2 md:px-4 py-1.5 md:py-2 bg-gray-900 text-white hover:bg-gray-800 rounded-lg transition text-xs md:text-sm"
               >
                 <Github className="w-3 h-3 md:w-4 md:h-4" />
-                <span className="hidden sm:inline">Contribute</span>
+                <span className="hidden sm:inline">Contribute Question</span>
               </button>
             </div>
           </div>
@@ -556,48 +654,6 @@ const SQLPracticePlatform = () => {
               isQuestionsPanelCollapsed ? 'w-16' : 'w-64'
             }`}
           >
-            {/* {isQuestionsPanelCollapsed ? (
-              // Collapsed View - Vertical Icons
-              <div className="flex flex-col h-full">
-                <div className="p-2 border-b border-gray-200 flex-shrink-0">
-                  <button
-                    onClick={() => setIsQuestionsPanelCollapsed(false)}
-                    className="w-full text-gray-600"
-                    title="Expand questions panel"
-                  >
-                    <ChevronRight className="w-5 h-5 mx-auto" />
-                  </button>
-                </div>
-                <div className="flex-1 overflow-y-auto hide-scrollbar py-2">
-                  {filteredQuestions.map((q) => {
-                    const actualIndex = questions.findIndex(question => question.id === q.id);
-                    const isActive = currentQuestion === actualIndex;
-                    return (
-                      <div key={q.id} className="px-2 mb-2">
-                        <button
-                          onClick={() => setCurrentQuestion(actualIndex)}
-                          className={`w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
-                            getDifficultyCircleColor(q.difficulty)
-                          } ${
-                            isActive 
-                              ? 'ring-4 ring-blue-400 scale-110 shadow-lg' 
-                              : 'hover:scale-105 shadow'
-                          } text-white border-2`}
-                          title={`${q.id}. ${q.title} (${q.difficulty})`}
-                        >
-                          {q.id}
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            ) : ( */}
-
-
-
-
-
 
             {isQuestionsPanelCollapsed ? (
             // Collapsed View - Vertical Icons
@@ -619,16 +675,15 @@ const SQLPracticePlatform = () => {
                     <div key={q.id} className="px-2 mb-2">
                       <button
                         onClick={() => setCurrentQuestion(actualIndex)}
-                        className={`w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
-                          getDifficultyCircleColor(q.difficulty)
-                        } ${
-                          isActive 
-                            ? 'ring-4 ring-blue-400 scale-110 shadow-lg' 
-                            : 'hover:scale-105 shadow'
+                        className={`w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold transition-all relative ${
+                          getQuestionButtonColor(q, isActive)
                         } text-white border-2`}
-                        title={`${q.id}. ${q.title} (${q.difficulty})`}
+                        title={`${q.id}. ${q.title}${completedQuestions.has(q.id) ? ' - COMPLETED' : ''}`}
                       >
-                        {q.id}
+                        {q.id.substring(0, 3).toUpperCase()}
+                        {completedQuestions.has(q.id) && (
+                          <span className="absolute text-[10px] text-white font-bold top-0 right-0 transform translate-x-1/2 -translate-y-1/2 bg-green-700 rounded-full w-4 h-4 flex items-center justify-center">✓</span>
+                        )}
                       </button>
                     </div>
                   );
@@ -636,23 +691,6 @@ const SQLPracticePlatform = () => {
               </div>
             </div>
           ) : (
-  // Expanded View - Full List
-  // ... existing code remains unchanged
-              // Expanded View - Full List
-              // <div className="flex flex-col h-full p-4">
-              //   <div className="flex items-center justify-between mb-4 flex-shrink-0">
-              //     <h2 className="font-semibold text-base flex items-center gap-2 text-gray-900">
-              //       <Book className="w-5 h-5" />
-              //       Questions ({questions.length})
-              //     </h2>
-              //     <button
-              //       onClick={() => setIsQuestionsPanelCollapsed(true)}
-              //       className="text-gray-600"
-              //       title="Collapse questions panel"
-              //     >
-              //       <ChevronLeft className="w-5 h-5" />
-              //     </button>
-              //   </div>
                   <div className="flex flex-col h-full p-4">
                   <div className="flex items-center justify-between mb-4 flex-shrink-0">
                     <h2 className="font-semibold text-base flex items-center gap-2 text-gray-900">
@@ -704,17 +742,27 @@ const SQLPracticePlatform = () => {
                   {filteredQuestions.length > 0 ? (
                     filteredQuestions.map((q) => {
                       const actualIndex = questions.findIndex(question => question.id === q.id);
+                      const isCompleted = completedQuestions.has(q.id);
+                      const isActive = currentQuestion === actualIndex;
+                      
                       return (
                         <button
                           key={q.id}
                           onClick={() => setCurrentQuestion(actualIndex)}
                           className={`w-full text-left p-3 rounded-lg transition ${
-                            currentQuestion === actualIndex
+                            isActive
                               ? 'bg-blue-50 border-2 border-blue-600'
-                              : 'bg-gray-50 hover:bg-gray-100 border-2 border-transparent'
+                              : isCompleted
+                                ? 'bg-green-50 border-2 border-green-600'
+                                : 'bg-gray-50 hover:bg-gray-100 border-2 border-transparent'
                           }`}
                         >
-                          <div className="font-medium text-sm text-gray-900 truncate">{q.id}. {q.title}</div>
+                          <div className="flex items-center justify-between">
+                            <div className="font-medium text-sm text-gray-900 truncate flex-1">{q.title}</div>
+                            {isCompleted && (
+                              <span className="ml-2 text-green-600 flex-shrink-0">✓</span>
+                            )}
+                          </div>
                           <div className={`text-xs px-2 py-1 rounded mt-1 inline-block ${difficultyColor(q.difficulty)}`}>
                             {q.difficulty}
                           </div>
@@ -754,16 +802,22 @@ const SQLPracticePlatform = () => {
                     <div className="bg-white rounded-lg shadow-sm p-6">
                       <div className="flex items-start justify-between mb-4 gap-2">
                         <h2 className="text-xl font-bold text-gray-900">{activeQuestion.title}</h2>
-                        <span className={`px-3 py-1 rounded-full text-sm font-medium ${difficultyColor(activeQuestion.difficulty)} flex-shrink-0`}>
-                          {activeQuestion.difficulty}
-                        </span>
+                        <div className="flex gap-1">
+                          {completedQuestions.has(activeQuestion.id) && (
+                            <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 flex items-center">
+                              ✓ Completed
+                            </span>
+                          )}
+                          <span className={`px-3 py-1 rounded-full text-sm font-medium ${difficultyColor(activeQuestion.difficulty)} flex-shrink-0`}>
+                            {activeQuestion.difficulty}
+                          </span>
+                        </div>
                       </div>
                       <p className="text-base text-gray-700 mb-4">{activeQuestion.description}</p>
                       <div className="bg-blue-50 border-l-4 border-blue-600 p-4 rounded">
                         <p className="text-sm text-blue-800"><strong>Hint:</strong> {activeQuestion.hint}</p>
                       </div>
                       
-                      {/* Contributor Link */}
                       {activeQuestion.contributor && (
                         <div className="mt-4 pt-4 border-t border-gray-200">
                           <a
