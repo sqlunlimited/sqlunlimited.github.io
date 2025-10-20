@@ -12,6 +12,7 @@
     "deploy": "gh-pages -d dist"
   },
   "dependencies": {
+    "@electric-sql/pglite": "^0.3.11",
     "gh-pages": "^6.3.0",
     "lucide-react": "^0.546.0",
     "react": "^19.1.1",
