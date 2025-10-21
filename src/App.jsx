@@ -606,12 +606,6 @@ const SQLPracticePlatform = () => {
             </p>
           </div>
           <div className="flex flex-col sm:flex-row gap-3">
-            {/* <button
-              onClick={() => setShowMobileWarning(false)}
-              className="flex-1 px-4 py-3 bg-gray-200 text-gray-700 hover:bg-gray-300 rounded-lg transition font-semibold"
-            >
-              Go Back
-            </button> */}
             <button
               onClick={() => {
                 setMobileContinue(true);
@@ -660,65 +654,62 @@ const SQLPracticePlatform = () => {
   return (
     <div className="h-screen w-screen bg-gray-50 text-gray-900 flex flex-col overflow-hidden">
       {/* About Modal */}
-      {showAboutModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl max-w-xl w-full max-h-[90vh] overflow-y-auto p-4 md:p-6 relative">
-            <div className="flex items-center gap-3 mb-4">
-              <Info className="w-5 h-5 md:w-6 md:h-6 text-blue-600 flex-shrink-0" />
-              <h2 className="text-lg md:text-xl font-bold text-gray-900">About This Platform</h2>
-            </div>
-            <div className="space-y-3 md:space-y-4 text-gray-700 text-sm md:text-base">
-              <p className="text-base md:text-lg">
-                🎨 <strong>This is just a hobby project and entirely vibe-coded!</strong>
-              </p>
-              <p><strong>Things to Note:</strong></p>
-              <p>
-                <strong>1. Open Source & Community Driven:</strong> This platform is open source! Anyone can contribute by adding SQL questions they've been asked in interviews or found anywhere online to help the community and learners grow together (Please avoid questions from existing coding platforms).
-              </p>
-              <p>
-                <strong>2. How to Contribute:</strong> You can easily add new questions using the <strong>"Contribute Question"</strong> button at the top of the page. Your contributions will directly benefit fellow learners!
-              </p>
-              <p>
-                <strong>3. Local Progress Storage:</strong> We don't have a backend server. Your progress (like solved questions) is saved only in your browser's local storage. This means if you switch devices or browsers, your progress won't be available. Please use the same browser and device to continue where you left off!
-              </p>
-              <p>
-                If you encounter any bugs, please fix them if you can — otherwise, message me on LinkedIn, and I'll talk to Claude to resolve it. 😄
-              </p>
-              <p><strong>Enjoy Solving...</strong></p>
-              <div className="flex flex-col sm:flex-row gap-2 mt-4">
-                <a
-                  href="https://github.com/sqlunlimited/sqlunlimited.github.io"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex-1 flex items-center justify-center gap-2 px-3 md:px-4 py-2 bg-gray-900 text-white hover:bg-gray-800 rounded-lg transition text-xs md:text-sm"
-                >
-                  <Github className="w-3 h-3 md:w-4 md:h-4" />
-                  View Platform Code
-                </a>
-                <a
-                  href="https://www.linkedin.com/in/sukhpreet41/"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex-1 flex items-center justify-center gap-2 px-3 md:px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 rounded-lg transition text-xs md:text-sm"
-                >
-                  <User className="w-3 h-3 md:w-4 md:h-4" />
-                  Connect on LinkedIn
-                </a>
-              </div>
-              <p className="text-xs md:text-sm text-gray-500 italic">
-                Built with love, caffeine, and a lot of trial and error! ☕✨
-              </p>
-            </div>
-            <button
-              onClick={() => setShowAboutModal(false)}
-              className="mt-4 md:mt-6 w-full px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 rounded-lg transition text-sm md:text-base"
-            >
-              Got it!
-            </button>
-          </div>
+{showAboutModal && (
+  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div className="bg-white rounded-lg shadow-xl max-w-xl w-full p-6 relative">
+      <div className="flex items-center gap-3 mb-4">
+        <Info className="w-6 h-6 text-blue-600 flex-shrink-0" />
+        <h2 className="text-xl font-bold text-gray-900">About This Platform</h2>
+      </div>
+      <div className="space-y-4 text-gray-700">
+        <p className="text-lg">
+          🎨 <strong>This is just a hobby project and entirely vibe-coded!</strong>
+        </p>
+        <p>
+          If you encounter any bugs, please fix them if you can — otherwise, message me on LinkedIn, and I'll talk to Claude to resolve it. 😄
+        </p>
+        <p>
+          <strong>✨ Open Source & Community Driven:</strong> This platform is open source! Anyone can contribute by adding SQL questions they've been asked in interviews to help the community and learners grow together.
+        </p>
+        <p>
+          <strong>🚀 How to Contribute:</strong> You can easily add new questions using the <strong>"Contribute Question"</strong> button at the top of the page. Your contributions will directly benefit fellow learners!
+        </p>
+        <p>
+          <strong>💾 Local Progress Storage:</strong> We don't have a backend server. Your progress (like solved questions) is saved only in your browser's local storage. This means if you switch devices or browsers, your progress won't be available. Please use the same browser and device to continue where you left off!
+        </p>
+        <div className="flex gap-2 mt-4">
+          <a
+            href="https://github.com/sqlunlimited/sqlunlimited.github.io"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex-1 flex items-center gap-2 px-4 py-2 bg-gray-900 text-white hover:bg-gray-800 rounded-lg transition text-sm"
+          >
+            <Github className="w-4 h-4" />
+            View Platform Code
+          </a>
+          <a
+            href="https://www.linkedin.com/in/sukhpreet41/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex-1 flex items-center gap-2 px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 rounded-lg transition text-sm"
+          >
+            <User className="w-4 h-4" />
+            Connect on LinkedIn
+          </a>
         </div>
-      )}
-
+        <p className="text-sm text-gray-500 italic">
+          Built with love, caffeine, and a lot of trial and error! ☕✨
+        </p>
+      </div>
+      <button
+        onClick={() => setShowAboutModal(false)}
+        className="mt-6 w-full px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 rounded-lg transition"
+      >
+        Got it!
+      </button>
+    </div>
+  </div>
+)}
       {/* Mobile Questions List Modal */}
       {showMobileQuestionsList && isMobile && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
