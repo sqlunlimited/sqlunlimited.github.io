@@ -1,6 +1,5 @@
-
 import React, { useState, useEffect, useRef } from 'react';
-import { Play, CheckCircle, XCircle, Upload, Book, Code, Table, Github, RefreshCw, Filter, X, User, Search, Database, BookOpen, Info, Smartphone, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Play, CheckCircle, XCircle, Upload, Book, Code, Table, Github, RefreshCw, Filter, X, User, Search, Database, BookOpen, Info, Smartphone, ChevronLeft, ChevronRight, Menu } from 'lucide-react';
 
 const SQLPracticePlatform = () => {
   const [SQL, setSQL] = useState(null);
@@ -22,14 +21,15 @@ const SQLPracticePlatform = () => {
   const [showLearningResources, setShowLearningResources] = useState(false);
   const [showAboutModal, setShowAboutModal] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [showMobileWarning, setShowMobileWarning] = useState(false);
+  const [mobileContinue, setMobileContinue] = useState(false);
   const [isQuestionsPanelCollapsed, setIsQuestionsPanelCollapsed] = useState(false);
   const [leftPanelWidth, setLeftPanelWidth] = useState(50);
   const [isDragging, setIsDragging] = useState(false);
+  const [mobileActiveTab, setMobileActiveTab] = useState('question');
+  const [showMobileQuestionsList, setShowMobileQuestionsList] = useState(false);
 
-  // State for completed questions
   const [completedQuestions, setCompletedQuestions] = useState(new Set());
-
-  // Progressive loading states
   const [questions, setQuestions] = useState([]);
   const [questionsLoaded, setQuestionsLoaded] = useState(0);
   const [totalQuestions, setTotalQuestions] = useState(0);
@@ -41,14 +41,25 @@ const SQLPracticePlatform = () => {
     const checkMobile = () => {
       const userAgent = navigator.userAgent || navigator.vendor || window.opera;
       const isMobileDevice = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(userAgent.toLowerCase());
-      const isSmallScreen = window.innerWidth <= 1024;
+      const isSmallScreen = window.innerWidth <= 768;
+      const wasMobile = isMobile;
       setIsMobile(isMobileDevice || isSmallScreen);
+      
+      // Show warning only on first detection and if not already continued
+      if ((isMobileDevice || isSmallScreen) && !wasMobile && !mobileContinue) {
+        setShowMobileWarning(true);
+      }
+      
+      // Auto-collapse questions panel on mobile
+      if (isMobileDevice || isSmallScreen) {
+        setIsQuestionsPanelCollapsed(true);
+      }
     };
     
     checkMobile();
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);
-  }, []);
+  }, [mobileContinue, isMobile]);
 
   // Load completed questions from IndexedDB on mount
   useEffect(() => {
@@ -107,7 +118,6 @@ const SQLPracticePlatform = () => {
           const transaction = db.transaction([storeName], 'readwrite');
           const objectStore = transaction.objectStore(storeName);
           
-          // Clear existing data and add new
           objectStore.clear();
           Array.from(completedQuestions).forEach(id => {
             objectStore.add({ id: id });
@@ -170,13 +180,21 @@ const SQLPracticePlatform = () => {
           background-color: hsl(200, 20%, 95%);
         }
       }
+
+      @media (max-width: 768px) {
+        .resizer {
+          display: none;
+        }
+      }
     `;
     document.head.appendChild(style);
     return () => document.head.removeChild(style);
   }, []);
 
-  // Handle mouse move for resizing
+  // Handle mouse move for resizing (desktop only)
   useEffect(() => {
+    if (isMobile) return;
+
     const handleMouseMove = (e) => {
       if (!isDragging || !containerRef.current) return;
 
@@ -206,25 +224,19 @@ const SQLPracticePlatform = () => {
       document.body.style.cursor = '';
       document.body.style.userSelect = '';
     };
-  }, [isDragging]);
+  }, [isDragging, isMobile]);
 
-  // GitHub repository configuration
   const GITHUB_REPO = 'sqlunlimited/sql_questions';
   const GITHUB_BRANCH = 'main';
   const QUESTIONS_FOLDER = 'questions';
 
-  /**
-   * OPTIMIZED: Uses GitHub Tree API to get all files in ONE API call
-   * Then fetches raw files via cdn.jsdelivr.net (no rate limit!)
-   */
   const loadQuestionsFromGitHub = async () => {
     setLoadingQuestions(true);
-    setQuestions([]); // Clear existing questions first
+    setQuestions([]);
     setQuestionsLoaded(0);
     setTotalQuestions(0);
     
     try {
-      // Method 1: Use GitHub Tree API (1 API call to get all file info)
       const treeUrl = `https://api.github.com/repos/${GITHUB_REPO}/git/trees/${GITHUB_BRANCH}?recursive=1`;
       const treeResponse = await fetch(treeUrl);
       
@@ -234,7 +246,6 @@ const SQLPracticePlatform = () => {
 
       const treeData = await treeResponse.json();
       
-      // Filter JSON files in questions folder
       const questionFiles = treeData.tree.filter(
         item => item.path.startsWith(QUESTIONS_FOLDER) && 
                 item.path.endsWith('.json') && 
@@ -243,11 +254,8 @@ const SQLPracticePlatform = () => {
 
       setTotalQuestions(questionFiles.length);
 
-      // Method 2: Use jsDelivr CDN for raw file access (NO RATE LIMIT!)
-      // jsDelivr format: https://cdn.jsdelivr.net/gh/user/repo@branch/path/to/file
       const loadPromises = questionFiles.map(async (file) => {
         try {
-          // Use jsDelivr CDN instead of GitHub raw content
           const cdnUrl = `https://cdn.jsdelivr.net/gh/${GITHUB_REPO}@${GITHUB_BRANCH}/${file.path}`;
           const fileResponse = await fetch(cdnUrl);
           
@@ -275,11 +283,9 @@ const SQLPracticePlatform = () => {
         }
       });
 
-      // Load all questions in parallel and set once
       const loadedQuestions = await Promise.all(loadPromises);
       const validQuestions = loadedQuestions.filter(q => q !== null);
       
-      // Sort and set all questions at once
       const sortedQuestions = validQuestions.sort((a, b) => a.id.localeCompare(b.id));
       setQuestions(sortedQuestions);
       
@@ -295,7 +301,6 @@ const SQLPracticePlatform = () => {
   useEffect(() => {
     const loadEngines = async () => {
       try {
-        // Load SQL.js
         const sqlScript = document.createElement('script');
         sqlScript.src = 'https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/sql-wasm.js';
         sqlScript.async = true;
@@ -316,7 +321,6 @@ const SQLPracticePlatform = () => {
         
         document.head.appendChild(sqlScript);
 
-        // Load PGlite using dynamic import
         try {
           const module = await import('https://cdn.jsdelivr.net/npm/@electric-sql/pglite/dist/index.js');
           setPGlite(() => module.PGlite);
@@ -333,7 +337,6 @@ const SQLPracticePlatform = () => {
     loadEngines();
   }, []);
 
-  // Load questions from GitHub on mount
   const hasLoadedRef = useRef(false);
   
   useEffect(() => {
@@ -349,7 +352,6 @@ const SQLPracticePlatform = () => {
       if (questions.length > 0 && questions[currentQuestion]) {
         const schema = questions[currentQuestion].schema;
         
-        // Initialize SQLite
         if (SQL) {
           try {
             const newDb = new SQL.Database();
@@ -360,10 +362,8 @@ const SQLPracticePlatform = () => {
           }
         }
         
-        // Initialize PGlite
         if (PGlite) {
           try {
-            // Close existing database if any
             if (pgDb) {
               try {
                 await pgDb.close();
@@ -485,7 +485,6 @@ const SQLPracticePlatform = () => {
       setIsCorrect(matches);
       setResult(resultData);
 
-      // Track completion when user gets correct answer
       if (matches) {
         const currentQuestionId = questions[currentQuestion]?.id;
         if (currentQuestionId !== undefined) {
@@ -520,14 +519,12 @@ const SQLPracticePlatform = () => {
   };
 
   const getQuestionButtonColor = (q, isActive) => {
-    // If this question is completed, always show green
     if (completedQuestions.has(q.id)) {
       return isActive 
         ? 'bg-green-500 border-green-600 ring-4 ring-green-400 scale-110 shadow-lg' 
         : 'bg-green-500 border-green-600 hover:scale-105 shadow';
     }
     
-    // Otherwise, show grey (inactive state)
     return isActive
       ? 'bg-gray-400 border-gray-500 ring-4 ring-blue-400 scale-110 shadow-lg'
       : 'bg-gray-400 border-gray-500 hover:scale-105 shadow';
@@ -542,7 +539,7 @@ const SQLPracticePlatform = () => {
           <thead className="bg-gray-100">
             <tr>
               {data.columns.map((col, idx) => (
-                <th key={idx} className="border px-3 py-2 text-left font-semibold border-gray-300 text-gray-800">
+                <th key={idx} className="border px-2 md:px-3 py-1 md:py-2 text-left font-semibold border-gray-300 text-gray-800 text-xs md:text-sm">
                   {col}
                 </th>
               ))}
@@ -552,7 +549,7 @@ const SQLPracticePlatform = () => {
             {data.values.map((row, rowIdx) => (
               <tr key={rowIdx} className="hover:bg-gray-50">
                 {row.map((cell, cellIdx) => (
-                  <td key={cellIdx} className="border px-3 py-2 border-gray-300 text-gray-800">
+                  <td key={cellIdx} className="border px-2 md:px-3 py-1 md:py-2 border-gray-300 text-gray-800 text-xs md:text-sm">
                     {cell !== null ? cell.toString() : 'NULL'}
                   </td>
                 ))}
@@ -564,7 +561,6 @@ const SQLPracticePlatform = () => {
     );
   };
 
-  // Filter questions by difficulty and search query
   const filteredQuestions = questions.filter(q => {
     const matchesDifficulty = difficultyFilter === 'All' || q.difficulty === difficultyFilter;
     const matchesSearch = searchQuery === '' || 
@@ -574,7 +570,6 @@ const SQLPracticePlatform = () => {
     return matchesDifficulty && matchesSearch;
   });
 
-  // Get current question safely
   const getCurrentQuestion = () => {
     if (questions.length === 0) return null;
     if (filteredQuestions.length === 0) return questions[0];
@@ -590,25 +585,42 @@ const SQLPracticePlatform = () => {
 
   const activeQuestion = getCurrentQuestion();
 
-  // Mobile blocking popup
-  if (isMobile) {
+  // Mobile warning popup
+  if (showMobileWarning && !mobileContinue) {
     return (
       <div className="fixed inset-0 bg-gray-900 bg-opacity-95 flex items-center justify-center z-50 p-4">
-        <div className="bg-white rounded-lg shadow-2xl max-w-md w-full p-8 text-center">
+        <div className="bg-white rounded-lg shadow-2xl max-w-md w-full p-6 md:p-8 text-center">
           <div className="mb-6">
-            <Smartphone className="w-16 h-16 text-blue-600 mx-auto mb-4" />
-            <h2 className="text-2xl font-bold text-gray-900 mb-3">Desktop Experience Required</h2>
-            <p className="text-gray-700 text-lg mb-2">
-              Please use this site on a PC for a better experience.
+            <Smartphone className="w-12 h-12 md:w-16 md:h-16 text-blue-600 mx-auto mb-4" />
+            <h2 className="text-xl md:text-2xl font-bold text-gray-900 mb-3">Mobile Device Detected</h2>
+            <p className="text-gray-700 text-base md:text-lg mb-2">
+              This app works best on desktop or tablet.
             </p>
             <p className="text-gray-600 text-sm">
-              This SQL practice platform is optimized for desktop browsers with larger screens for the best learning experience.
+              You can continue on mobile, but some features may be harder to use on smaller screens.
             </p>
           </div>
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-4">
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
             <p className="text-blue-800 text-sm">
-              💻 Switch to a desktop or laptop computer to access all features.
+              💻 For the best experience, use a desktop or laptop computer.
             </p>
+          </div>
+          <div className="flex flex-col sm:flex-row gap-3">
+            {/* <button
+              onClick={() => setShowMobileWarning(false)}
+              className="flex-1 px-4 py-3 bg-gray-200 text-gray-700 hover:bg-gray-300 rounded-lg transition font-semibold"
+            >
+              Go Back
+            </button> */}
+            <button
+              onClick={() => {
+                setMobileContinue(true);
+                setShowMobileWarning(false);
+              }}
+              className="flex-1 px-4 py-3 bg-blue-600 text-white hover:bg-blue-700 rounded-lg transition font-semibold"
+            >
+              Continue Anyway
+            </button>
           </div>
         </div>
       </div>
@@ -618,7 +630,7 @@ const SQLPracticePlatform = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen w-screen bg-gray-50 overflow-hidden">
-        <div className="text-center">
+        <div className="text-center px-4">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
           <p className="mt-4 text-gray-600">Loading SQL Engines...</p>
         </div>
@@ -626,14 +638,13 @@ const SQLPracticePlatform = () => {
     );
   }
 
-  // Show loading progress while questions load
   const isInitialLoad = loadingQuestions && questions.length === 0;
   const hasPartialQuestions = questions.length > 0 && loadingQuestions;
 
   if (isInitialLoad) {
     return (
       <div className="flex items-center justify-center h-screen w-screen bg-gray-50 overflow-hidden">
-        <div className="text-center">
+        <div className="text-center px-4">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
           <p className="text-gray-600 text-lg font-semibold">Loading questions...</p>
           {totalQuestions > 0 && (
@@ -651,13 +662,13 @@ const SQLPracticePlatform = () => {
       {/* About Modal */}
       {showAboutModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl max-w-xl w-full p-6 relative">
+          <div className="bg-white rounded-lg shadow-xl max-w-xl w-full max-h-[90vh] overflow-y-auto p-4 md:p-6 relative">
             <div className="flex items-center gap-3 mb-4">
-              <Info className="w-6 h-6 text-blue-600 flex-shrink-0" />
-              <h2 className="text-xl font-bold text-gray-900">About This Platform</h2>
+              <Info className="w-5 h-5 md:w-6 md:h-6 text-blue-600 flex-shrink-0" />
+              <h2 className="text-lg md:text-xl font-bold text-gray-900">About This Platform</h2>
             </div>
-            <div className="space-y-4 text-gray-700">
-              <p className="text-lg">
+            <div className="space-y-3 md:space-y-4 text-gray-700 text-sm md:text-base">
+              <p className="text-base md:text-lg">
                 🎨 <strong>This is just a hobby project and entirely vibe-coded!</strong>
               </p>
               <p><strong>Things to Note:</strong></p>
@@ -674,66 +685,178 @@ const SQLPracticePlatform = () => {
                 If you encounter any bugs, please fix them if you can — otherwise, message me on LinkedIn, and I'll talk to Claude to resolve it. 😄
               </p>
               <p><strong>Enjoy Solving...</strong></p>
-              <div className="flex gap-2 mt-4">
+              <div className="flex flex-col sm:flex-row gap-2 mt-4">
                 <a
                   href="https://github.com/sqlunlimited/sqlunlimited.github.io"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex-1 flex items-center gap-2 px-4 py-2 bg-gray-900 text-white hover:bg-gray-800 rounded-lg transition text-sm"
+                  className="flex-1 flex items-center justify-center gap-2 px-3 md:px-4 py-2 bg-gray-900 text-white hover:bg-gray-800 rounded-lg transition text-xs md:text-sm"
                 >
-                  <Github className="w-4 h-4" />
+                  <Github className="w-3 h-3 md:w-4 md:h-4" />
                   View Platform Code
                 </a>
                 <a
                   href="https://www.linkedin.com/in/sukhpreet41/"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex-1 flex items-center gap-2 px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 rounded-lg transition text-sm"
+                  className="flex-1 flex items-center justify-center gap-2 px-3 md:px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 rounded-lg transition text-xs md:text-sm"
                 >
-                  <User className="w-4 h-4" />
+                  <User className="w-3 h-3 md:w-4 md:h-4" />
                   Connect on LinkedIn
                 </a>
               </div>
-              <p className="text-sm text-gray-500 italic">
+              <p className="text-xs md:text-sm text-gray-500 italic">
                 Built with love, caffeine, and a lot of trial and error! ☕✨
               </p>
             </div>
             <button
               onClick={() => setShowAboutModal(false)}
-              className="mt-6 w-full px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 rounded-lg transition"
+              className="mt-4 md:mt-6 w-full px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 rounded-lg transition text-sm md:text-base"
             >
               Got it!
             </button>
           </div>
         </div>
       )}
-      {/* Header with loading indicator */}
+
+      {/* Mobile Questions List Modal */}
+      {showMobileQuestionsList && isMobile && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md max-h-[80vh] flex flex-col">
+            <div className="p-4 border-b border-gray-200 flex items-center justify-between">
+              <h2 className="font-semibold text-base flex items-center gap-2 text-gray-900">
+                <Book className="w-5 h-5" />
+                Questions ({questions.length})
+              </h2>
+              <button
+                onClick={() => setShowMobileQuestionsList(false)}
+                className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-600"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="p-4 space-y-3 flex-shrink-0">
+              <div>
+                <label className="text-xs font-medium mb-2 block text-gray-600">
+                  <Search className="w-3 h-3 inline mr-1" />
+                  Search
+                </label>
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search..."
+                  className="w-full px-3 py-2 rounded-lg text-sm bg-gray-50 text-gray-900 border-gray-300 border focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              
+              <div>
+                <label className="text-xs font-medium mb-2 block text-gray-600">
+                  <Filter className="w-3 h-3 inline mr-1" />
+                  Difficulty
+                </label>
+                <select
+                  value={difficultyFilter}
+                  onChange={(e) => setDifficultyFilter(e.target.value)}
+                  className="w-full px-3 py-2 rounded-lg text-sm bg-gray-50 text-gray-900 border-gray-300 border focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="All">All</option>
+                  <option value="Easy">Easy</option>
+                  <option value="Medium">Medium</option>
+                  <option value="Hard">Hard</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-4 space-y-2">
+              {filteredQuestions.length > 0 ? (
+                filteredQuestions.map((q) => {
+                  const actualIndex = questions.findIndex(question => question.id === q.id);
+                  const isCompleted = completedQuestions.has(q.id);
+                  const isActive = currentQuestion === actualIndex;
+                  
+                  return (
+                    <button
+                      key={q.id}
+                      onClick={() => {
+                        setCurrentQuestion(actualIndex);
+                        setShowMobileQuestionsList(false);
+                      }}
+                      className={`w-full text-left p-3 rounded-lg transition ${
+                        isActive
+                          ? 'bg-blue-50 border-2 border-blue-600'
+                          : isCompleted
+                            ? 'bg-green-50 border-2 border-green-600'
+                            : 'bg-gray-50 hover:bg-gray-100 border-2 border-transparent'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="font-medium text-sm text-gray-900 truncate flex-1">{q.title}</div>
+                        {isCompleted && (
+                          <span className="ml-2 text-green-600 flex-shrink-0">✓</span>
+                        )}
+                      </div>
+                      <div className={`text-xs px-2 py-1 rounded mt-1 inline-block ${difficultyColor(q.difficulty)}`}>
+                        {q.difficulty}
+                      </div>
+                    </button>
+                  );
+                })
+              ) : (
+                <div className="text-center py-8 text-gray-500">
+                  <p className="text-sm">No questions found.</p>
+                  <button
+                    onClick={() => {
+                      setDifficultyFilter('All');
+                      setSearchQuery('');
+                    }}
+                    className="mt-3 text-xs px-3 py-1 rounded bg-blue-600 text-white hover:bg-blue-700"
+                  >
+                    Clear Filters
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Header */}
       <div className="bg-white border-b shadow-sm border-gray-200 flex-shrink-0">
-        <div className="px-3 md:px-4 py-3 md:py-4">
+        <div className="px-3 md:px-4 py-2 md:py-3">
           <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2 md:gap-3 min-w-0">
-              <Code className="w-6 h-6 md:w-8 md:h-8 text-blue-600 flex-shrink-0" />
-              <h1 className="text-lg md:text-2xl font-bold text-gray-900 truncate">SQL_Unlimited</h1>
+            <div className="flex items-center gap-2 min-w-0">
+              <Code className="w-5 h-5 md:w-8 md:h-8 text-blue-600 flex-shrink-0" />
+              <h1 className="text-base md:text-2xl font-bold text-gray-900 truncate">SQL_Unlimited</h1>
               {hasPartialQuestions && (
-                <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full animate-pulse">
+                <span className="hidden sm:inline text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full animate-pulse">
                   Loading {questionsLoaded}/{totalQuestions}
                 </span>
               )}
             </div>
-            <div className="flex gap-2 md:gap-3 flex-shrink-0">
+            <div className="flex gap-1 md:gap-2 flex-shrink-0">
+              {isMobile && (
+                <button
+                  onClick={() => setShowMobileQuestionsList(true)}
+                  className="flex items-center gap-1 px-2 py-1.5 bg-blue-600 text-white hover:bg-blue-700 rounded-lg transition text-xs"
+                >
+                  <Menu className="w-4 h-4" />
+                </button>
+              )}
               <button
                 onClick={() => setShowAboutModal(true)}
-                className="flex items-center gap-1 md:gap-2 px-2 md:px-4 py-1.5 md:py-2 bg-purple-600 text-white hover:bg-purple-700 rounded-lg transition text-xs md:text-sm"
+                className="flex items-center gap-1 px-2 md:px-4 py-1.5 md:py-2 bg-purple-600 text-white hover:bg-purple-700 rounded-lg transition text-xs md:text-sm"
               >
                 <Info className="w-3 h-3 md:w-4 md:h-4" />
                 <span className="hidden sm:inline">About</span>
               </button>
               <button
                 onClick={() => window.open(`https://github.com/${GITHUB_REPO}`, '_blank')}
-                className="flex items-center gap-1 md:gap-2 px-2 md:px-4 py-1.5 md:py-2 bg-gray-900 text-white hover:bg-gray-800 rounded-lg transition text-xs md:text-sm"
+                className="flex items-center gap-1 px-2 md:px-4 py-1.5 md:py-2 bg-gray-900 text-white hover:bg-gray-800 rounded-lg transition text-xs md:text-sm"
               >
                 <Github className="w-3 h-3 md:w-4 md:h-4" />
-                <span className="hidden sm:inline">Contribute Question</span>
+                <span className="hidden md:inline">Contribute</span>
               </button>
             </div>
           </div>
@@ -742,50 +865,49 @@ const SQLPracticePlatform = () => {
 
       <div className="flex-1 overflow-hidden">
         <div className="h-full flex" ref={containerRef}>
-          {/* Questions List - Collapsible */}
-          <div 
-            className={`bg-white border-r border-gray-200 flex flex-col overflow-hidden transition-all duration-300 ${
-              isQuestionsPanelCollapsed ? 'w-16' : 'w-64'
-            }`}
-          >
-
-            {isQuestionsPanelCollapsed ? (
-            // Collapsed View - Vertical Icons
-            <div className="flex flex-col h-full">
-              <div className="p-2 border-b border-gray-200 flex-shrink-0">
-                <button
-                  onClick={() => setIsQuestionsPanelCollapsed(false)}
-                  className="w-full p-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-600 transition-colors"
-                  title="Expand questions panel"
-                >
-                  <ChevronRight className="w-5 h-5 mx-auto" />
-                </button>
-              </div>
-              <div className="flex-1 overflow-y-auto hide-scrollbar py-2">
-                {filteredQuestions.map((q) => {
-                  const actualIndex = questions.findIndex(question => question.id === q.id);
-                  const isActive = currentQuestion === actualIndex;
-                  return (
-                    <div key={q.id} className="px-2 mb-2">
-                      <button
-                        onClick={() => setCurrentQuestion(actualIndex)}
-                        className={`w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold transition-all relative ${
-                          getQuestionButtonColor(q, isActive)
-                        } text-white border-2`}
-                        title={`${q.id}. ${q.title}${completedQuestions.has(q.id) ? ' - COMPLETED' : ''}`}
-                      >
-                        {q.id.substring(0, 3).toUpperCase()}
-                        {completedQuestions.has(q.id) && (
-                          <span className="absolute text-[10px] text-white font-bold top-0 right-0 transform translate-x-1/2 -translate-y-1/2 bg-green-700 rounded-full w-4 h-4 flex items-center justify-center">✓</span>
-                        )}
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          ) : (
-                  <div className="flex flex-col h-full p-4">
+          {/* Desktop Questions List */}
+          {!isMobile && (
+            <div 
+              className={`bg-white border-r border-gray-200 flex flex-col overflow-hidden transition-all duration-300 ${
+                isQuestionsPanelCollapsed ? 'w-16' : 'w-64'
+              }`}
+            >
+              {isQuestionsPanelCollapsed ? (
+                <div className="flex flex-col h-full">
+                  <div className="p-2 border-b border-gray-200 flex-shrink-0">
+                    <button
+                      onClick={() => setIsQuestionsPanelCollapsed(false)}
+                      className="w-full p-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-600 transition-colors"
+                      title="Expand questions panel"
+                    >
+                      <ChevronRight className="w-5 h-5 mx-auto" />
+                    </button>
+                  </div>
+                  <div className="flex-1 overflow-y-auto hide-scrollbar py-2">
+                    {filteredQuestions.map((q) => {
+                      const actualIndex = questions.findIndex(question => question.id === q.id);
+                      const isActive = currentQuestion === actualIndex;
+                      return (
+                        <div key={q.id} className="px-2 mb-2">
+                          <button
+                            onClick={() => setCurrentQuestion(actualIndex)}
+                            className={`w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold transition-all relative ${
+                              getQuestionButtonColor(q, isActive)
+                            } text-white border-2`}
+                            title={`${q.id}. ${q.title}${completedQuestions.has(q.id) ? ' - COMPLETED' : ''}`}
+                          >
+                            {q.id.substring(0, 3).toUpperCase()}
+                            {completedQuestions.has(q.id) && (
+                              <span className="absolute text-[10px] text-white font-bold top-0 right-0 transform translate-x-1/2 -translate-y-1/2 bg-green-700 rounded-full w-4 h-4 flex items-center justify-center">✓</span>
+                            )}
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : (
+                <div className="flex flex-col h-full p-4">
                   <div className="flex items-center justify-between mb-4 flex-shrink-0">
                     <h2 className="font-semibold text-base flex items-center gap-2 text-gray-900">
                       <Book className="w-5 h-5" />
@@ -799,296 +921,509 @@ const SQLPracticePlatform = () => {
                       <ChevronLeft className="w-5 h-5" />
                     </button>
                   </div>
-                {/* Search Bar */}
-                <div className="mb-3 flex-shrink-0">
-                  <label className="text-xs font-medium mb-2 block text-gray-600">
-                    <Search className="w-3 h-3 inline mr-1" />
-                    Search
-                  </label>
-                  <input
-                    type="text"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Search..."
-                    className="w-full px-3 py-2 rounded-lg text-sm bg-gray-50 text-gray-900 border-gray-300 border focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
+                  
+                  <div className="mb-3 flex-shrink-0">
+                    <label className="text-xs font-medium mb-2 block text-gray-600">
+                      <Search className="w-3 h-3 inline mr-1" />
+                      Search
+                    </label>
+                    <input
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder="Search..."
+                      className="w-full px-3 py-2 rounded-lg text-sm bg-gray-50 text-gray-900 border-gray-300 border focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                  
+                  <div className="mb-4 flex-shrink-0">
+                    <label className="text-xs font-medium mb-2 block text-gray-600">
+                      <Filter className="w-3 h-3 inline mr-1" />
+                      Difficulty
+                    </label>
+                    <select
+                      value={difficultyFilter}
+                      onChange={(e) => setDifficultyFilter(e.target.value)}
+                      className="w-full px-3 py-2 rounded-lg text-sm bg-gray-50 text-gray-900 border-gray-300 border focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="All">All</option>
+                      <option value="Easy">Easy</option>
+                      <option value="Medium">Medium</option>
+                      <option value="Hard">Hard</option>
+                    </select>
+                  </div>
+
+                  <div className="space-y-2 overflow-y-auto text-gray-900 flex-1 min-h-0 hide-scrollbar">
+                    {filteredQuestions.length > 0 ? (
+                      filteredQuestions.map((q) => {
+                        const actualIndex = questions.findIndex(question => question.id === q.id);
+                        const isCompleted = completedQuestions.has(q.id);
+                        const isActive = currentQuestion === actualIndex;
+                        
+                        return (
+                          <button
+                            key={q.id}
+                            onClick={() => setCurrentQuestion(actualIndex)}
+                            className={`w-full text-left p-3 rounded-lg transition ${
+                              isActive
+                                ? 'bg-blue-50 border-2 border-blue-600'
+                                : isCompleted
+                                  ? 'bg-green-50 border-2 border-green-600'
+                                  : 'bg-gray-50 hover:bg-gray-100 border-2 border-transparent'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between">
+                              <div className="font-medium text-sm text-gray-900 truncate flex-1">{q.title}</div>
+                              {isCompleted && (
+                                <span className="ml-2 text-green-600 flex-shrink-0">✓</span>
+                              )}
+                            </div>
+                            <div className={`text-xs px-2 py-1 rounded mt-1 inline-block ${difficultyColor(q.difficulty)}`}>
+                              {q.difficulty}
+                            </div>
+                          </button>
+                        );
+                      })
+                    ) : (
+                      <div className="text-center py-8 text-gray-500">
+                        <p className="text-sm">No questions found.</p>
+                        <button
+                          onClick={() => {
+                            setDifficultyFilter('All');
+                            setSearchQuery('');
+                          }}
+                          className="mt-3 text-xs px-3 py-1 rounded bg-blue-600 text-white hover:bg-blue-700"
+                        >
+                          Clear Filters
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
-                
-                {/* Filter Dropdown */}
-                <div className="mb-4 flex-shrink-0">
-                  <label className="text-xs font-medium mb-2 block text-gray-600">
-                    <Filter className="w-3 h-3 inline mr-1" />
-                    Difficulty
-                  </label>
-                  <select
-                    value={difficultyFilter}
-                    onChange={(e) => setDifficultyFilter(e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg text-sm bg-gray-50 text-gray-900 border-gray-300 border focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="All">All</option>
-                    <option value="Easy">Easy</option>
-                    <option value="Medium">Medium</option>
-                    <option value="Hard">Hard</option>
-                  </select>
+              )}
+            </div>
+          )}
+
+          {/* Main Content Area */}
+          <div className="flex-1 flex overflow-hidden">
+            {/* Desktop Layout - Resizable Panels */}
+            {!isMobile ? (
+              <>
+                {/* Left Panel - Question Details */}
+                <div 
+                  className="overflow-y-auto hide-scrollbar bg-gray-50"
+                  style={{ width: `${leftPanelWidth}%` }}
+                >
+                  <div className="p-4 space-y-4">
+                    {activeQuestion ? (
+                      <>
+                        <div className="bg-white rounded-lg shadow-sm p-6">
+                          <div className="flex items-start justify-between mb-4 gap-2">
+                            <h2 className="text-xl font-bold text-gray-900">{activeQuestion.title}</h2>
+                            <div className="flex gap-1">
+                              {completedQuestions.has(activeQuestion.id) && (
+                                <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 flex items-center">
+                                  ✓ Completed
+                                </span>
+                              )}
+                              <span className={`px-3 py-1 rounded-full text-sm font-medium ${difficultyColor(activeQuestion.difficulty)} flex-shrink-0`}>
+                                {activeQuestion.difficulty}
+                              </span>
+                            </div>
+                          </div>
+                          <p className="text-base text-gray-700 mb-4">{activeQuestion.description}</p>
+                          <div className="bg-blue-50 border-l-4 border-blue-600 p-4 rounded">
+                            <p className="text-sm text-blue-800"><strong>Hint:</strong> {activeQuestion.hint}</p>
+                          </div>
+                          
+                          {activeQuestion.contributor && (
+                            <div className="mt-4 pt-4 border-t border-gray-200">
+                              <a
+                                href={activeQuestion.contributor.link}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-2 text-sm px-3 py-2 rounded-lg transition bg-gray-100 hover:bg-gray-200 text-gray-700"
+                              >
+                                <User className="w-4 h-4" />
+                                Contributor: {activeQuestion.contributor.name}
+                              </a>
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="bg-white rounded-lg shadow-sm p-6">
+                          <h3 className="font-semibold mb-3 flex items-center gap-2 text-gray-900 text-base">
+                            <Table className="w-4 h-4" />
+                            Input Data
+                          </h3>
+                          {SQL && (() => {
+                            try {
+                              const tempDb = new SQL.Database();
+                              tempDb.exec(activeQuestion.schema);
+                              const tables = tempDb.exec("SELECT name FROM sqlite_master WHERE type='table'");
+                              
+                              return tables[0].values.map(([tableName]) => {
+                                const data = tempDb.exec(`SELECT * FROM ${tableName}`);
+                                return (
+                                  <div key={tableName} className="mb-4">
+                                    <h4 className="text-sm font-medium mb-2 text-gray-700">{tableName}</h4>
+                                    {renderTable(data[0])}
+                                  </div>
+                                );
+                              });
+                            } catch (err) {
+                              return <p className="text-sm text-gray-500">Unable to display input data</p>;
+                            }
+                          })()}
+                        </div>
+
+                        <div className="bg-white rounded-lg shadow-sm p-6">
+                          <h3 className="font-semibold mb-3 flex items-center gap-2 text-gray-900 text-base">
+                            <CheckCircle className="w-4 h-4 text-green-600" />
+                            Expected Output
+                          </h3>
+                          {renderTable(activeQuestion.expectedResult)}
+                        </div>
+
+                        <div className="bg-white rounded-lg shadow-sm p-6">
+                          <h3 className="font-semibold mb-3 flex items-center gap-2 text-gray-900 text-base">
+                            <Code className="w-4 h-4" />
+                            Database Schema
+                          </h3>
+                          <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto text-xs">
+                            {activeQuestion.schema.trim()}
+                          </pre>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="bg-white rounded-lg shadow-sm p-6">
+                        <p className="text-center text-gray-500 text-base">
+                          No questions available for the selected filter.
+                        </p>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
-                <div className="space-y-2 overflow-y-auto text-gray-900 flex-1 min-h-0 hide-scrollbar">
-                  {filteredQuestions.length > 0 ? (
-                    filteredQuestions.map((q) => {
-                      const actualIndex = questions.findIndex(question => question.id === q.id);
-                      const isCompleted = completedQuestions.has(q.id);
-                      const isActive = currentQuestion === actualIndex;
-                      
-                      return (
-                        <button
-                          key={q.id}
-                          onClick={() => setCurrentQuestion(actualIndex)}
-                          className={`w-full text-left p-3 rounded-lg transition ${
-                            isActive
-                              ? 'bg-blue-50 border-2 border-blue-600'
-                              : isCompleted
-                                ? 'bg-green-50 border-2 border-green-600'
-                                : 'bg-gray-50 hover:bg-gray-100 border-2 border-transparent'
-                          }`}
-                        >
-                          <div className="flex items-center justify-between">
-                            <div className="font-medium text-sm text-gray-900 truncate flex-1">{q.title}</div>
-                            {isCompleted && (
-                              <span className="ml-2 text-green-600 flex-shrink-0">✓</span>
+                {/* Resizer */}
+                <div
+                  className={`resizer w-1 bg-gray-300 hover:bg-blue-400 cursor-col-resize flex-shrink-0 ${
+                    isDragging ? 'dragging bg-blue-500' : ''
+                  }`}
+                  onMouseDown={() => setIsDragging(true)}
+                />
+
+                {/* Right Panel - SQL Editor */}
+                <div 
+                  className="overflow-y-auto hide-scrollbar bg-gray-50"
+                  style={{ width: `${100 - leftPanelWidth}%` }}
+                >
+                  <div className="p-4 space-y-4">
+                    {activeQuestion ? (
+                      <>
+                        <div className="bg-white rounded-lg shadow-sm p-6">
+                          <div className="flex items-center justify-between mb-3">
+                            <h3 className="font-semibold text-gray-900 text-base">Your SQL Query</h3>
+                            <div className="flex items-center gap-2">
+                              <select
+                                value={selectedEngine}
+                                onChange={(e) => setSelectedEngine(e.target.value)}
+                                className="px-3 py-2 text-sm bg-gray-50 text-gray-900 border-gray-300 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              >
+                                <option value="SQLite">SQLite</option>
+                                <option value="PostgreSQL">PostgreSQL</option>
+                              </select>
+                              <button
+                                onClick={executeQuery}
+                                className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white hover:bg-green-700 rounded-lg transition text-sm"
+                              >
+                                <Play className="w-4 h-4" />
+                                Run
+                              </button>
+                            </div>
+                          </div>
+                          <div className="mb-2 flex items-center gap-2 text-xs text-gray-600">
+                            <Database className="w-3 h-3" />
+                            Running on: <span className="font-semibold">{selectedEngine}</span>
+                          </div>
+                          <textarea
+                            value={userQuery}
+                            onChange={(e) => setUserQuery(e.target.value)}
+                            placeholder="-- Write your SQL query here..."
+                            className="w-full h-64 p-4 rounded-lg font-mono text-sm focus:outline-none resize-none bg-gray-50 text-gray-900 border border-gray-300 focus:ring-2 focus:ring-blue-500"
+                          />
+                        </div>
+
+                        {showOutput && (result || error || isCorrect !== null) && (
+                          <div className="bg-white rounded-lg shadow-sm p-6">
+                            <div className="flex items-center justify-between mb-4">
+                              <h3 className="font-semibold text-gray-900 text-base">Query Results</h3>
+                            </div>
+
+                            {isCorrect !== null && (
+                              <div className={`flex items-center gap-2 mb-4 p-4 rounded-lg ${
+                                isCorrect 
+                                  ? 'bg-green-50 text-green-800'
+                                  : 'bg-red-50 text-red-800'
+                              }`}>
+                                {isCorrect ? (
+                                  <>
+                                    <CheckCircle className="w-5 h-5 flex-shrink-0" />
+                                    <span className="font-semibold text-sm">Correct! Well done! 🎉</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <XCircle className="w-5 h-5 flex-shrink-0" />
+                                    <span className="font-semibold text-sm">Not quite right. Compare your output with the expected output.</span>
+                                  </>
+                                )}
+                              </div>
+                            )}
+
+                            {error && (
+                              <div className="border p-4 rounded-lg mb-4 border-red-200 bg-red-50 text-red-800 text-sm">
+                                <strong>Error:</strong> {error}
+                              </div>
+                            )}
+
+                            {result && (
+                              <div>
+                                <h4 className="font-semibold mb-3 text-sm text-gray-900">Your Output:</h4>
+                                {result.values && result.values.length > 0 ? (
+                                  renderTable(result)
+                                ) : (
+                                  <p className="text-gray-500 text-sm">Query executed successfully. No rows returned.</p>
+                                )}
+                              </div>
                             )}
                           </div>
-                          <div className={`text-xs px-2 py-1 rounded mt-1 inline-block ${difficultyColor(q.difficulty)}`}>
-                            {q.difficulty}
+                        )}
+                      </>
+                    ) : (
+                      <div className="bg-white rounded-lg shadow-sm p-6">
+                        <p className="text-center text-gray-500 text-base">
+                          Select a question to start practicing.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </>
+            ) : (
+              /* Mobile Layout - Tabbed Interface */
+              <div className="flex-1 flex flex-col overflow-hidden">
+                {/* Mobile Tab Switcher */}
+                <div className="bg-white border-b border-gray-200 flex-shrink-0">
+                  <div className="flex gap-1 p-1"> {/* Add gap-1 for spacing between buttons AND p-1 for padding from edges */}
+                    <button
+                      onClick={() => setMobileActiveTab('question')}
+                      className={`flex-1 py-2 px-3 text-sm font-medium rounded transition ${
+                        mobileActiveTab === 'question'
+                          ? 'bg-blue-100 text-blue-700 border-b-2 border-blue-600'
+                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                      }`}
+                    >
+                      Question
+                    </button>
+                    <button
+                      onClick={() => setMobileActiveTab('editor')}
+                      className={`flex-1 py-2 px-3 text-sm font-medium rounded transition ${
+                        mobileActiveTab === 'editor'
+                          ? 'bg-blue-100 text-blue-700 border-b-2 border-blue-600'
+                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                      }`}
+                    >
+                      SQL Editor
+                    </button>
+                  </div>
+                </div>
+
+                {/* Mobile Tab Content */}
+                <div className="flex-1 overflow-y-auto hide-scrollbar bg-gray-50">
+                  {mobileActiveTab === 'question' ? (
+                    <div className="p-3 md:p-4 space-y-3 md:space-y-4">
+                      {activeQuestion ? (
+                        <>
+                          <div className="bg-white rounded-lg shadow-sm p-4">
+                            <div className="flex items-start justify-between mb-3 gap-2">
+                              <h2 className="text-base md:text-lg font-bold text-gray-900">{activeQuestion.title}</h2>
+                              <div className="flex flex-col gap-1">
+                                {completedQuestions.has(activeQuestion.id) && (
+                                  <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 flex items-center whitespace-nowrap">
+                                    ✓ Done
+                                  </span>
+                                )}
+                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${difficultyColor(activeQuestion.difficulty)} flex-shrink-0 whitespace-nowrap`}>
+                                  {activeQuestion.difficulty}
+                                </span>
+                              </div>
+                            </div>
+                            <p className="text-sm text-gray-700 mb-3">{activeQuestion.description}</p>
+                            <div className="bg-blue-50 border-l-4 border-blue-600 p-3 rounded">
+                              <p className="text-xs text-blue-800"><strong>Hint:</strong> {activeQuestion.hint}</p>
+                            </div>
+                            
+                            {activeQuestion.contributor && (
+                              <div className="mt-3 pt-3 border-t border-gray-200">
+                                <a
+                                  href={activeQuestion.contributor.link}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-2 text-xs px-2 py-1.5 rounded-lg transition bg-gray-100 hover:bg-gray-200 text-gray-700"
+                                >
+                                  <User className="w-3 h-3" />
+                                  By: {activeQuestion.contributor.name}
+                                </a>
+                              </div>
+                            )}
                           </div>
-                        </button>
-                      );
-                    })
+
+                          <div className="bg-white rounded-lg shadow-sm p-4">
+                            <h3 className="font-semibold mb-2 flex items-center gap-2 text-gray-900 text-sm">
+                              <Table className="w-4 h-4" />
+                              Input Data
+                            </h3>
+                            {SQL && (() => {
+                              try {
+                                const tempDb = new SQL.Database();
+                                tempDb.exec(activeQuestion.schema);
+                                const tables = tempDb.exec("SELECT name FROM sqlite_master WHERE type='table'");
+                                
+                                return tables[0].values.map(([tableName]) => {
+                                  const data = tempDb.exec(`SELECT * FROM ${tableName}`);
+                                  return (
+                                    <div key={tableName} className="mb-3">
+                                      <h4 className="text-xs font-medium mb-1 text-gray-700">{tableName}</h4>
+                                      {renderTable(data[0])}
+                                    </div>
+                                  );
+                                });
+                              } catch (err) {
+                                return <p className="text-xs text-gray-500">Unable to display input data</p>;
+                              }
+                            })()}
+                          </div>
+
+                          <div className="bg-white rounded-lg shadow-sm p-4">
+                            <h3 className="font-semibold mb-2 flex items-center gap-2 text-gray-900 text-sm">
+                              <CheckCircle className="w-4 h-4 text-green-600" />
+                              Expected Output
+                            </h3>
+                            {renderTable(activeQuestion.expectedResult)}
+                          </div>
+
+                          <div className="bg-white rounded-lg shadow-sm p-4">
+                            <h3 className="font-semibold mb-2 flex items-center gap-2 text-gray-900 text-sm">
+                              <Code className="w-4 h-4" />
+                              Database Schema
+                            </h3>
+                            <pre className="bg-gray-900 text-gray-100 p-3 rounded-lg overflow-x-auto text-xs">
+                              {activeQuestion.schema.trim()}
+                            </pre>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="bg-white rounded-lg shadow-sm p-6">
+                          <p className="text-center text-gray-500 text-sm">
+                            No questions available.
+                          </p>
+                        </div>
+                      )}
+                    </div>
                   ) : (
-                    <div className="text-center py-8 text-gray-500">
-                      <p className="text-sm">No questions found.</p>
-                      <button
-                        onClick={() => {
-                          setDifficultyFilter('All');
-                          setSearchQuery('');
-                        }}
-                        className="mt-3 text-xs px-3 py-1 rounded bg-blue-600 text-white hover:bg-blue-700"
-                      >
-                        Clear Filters
-                      </button>
+                    <div className="p-3 md:p-4 space-y-3 md:space-y-4">
+                      {activeQuestion ? (
+                        <>
+                          <div className="bg-white rounded-lg shadow-sm p-4">
+                            <div className="flex flex-col gap-2 mb-3">
+                              <h3 className="font-semibold text-gray-900 text-sm">Your SQL Query</h3>
+                              <div className="flex items-center gap-2">
+                                <select
+                                  value={selectedEngine}
+                                  onChange={(e) => setSelectedEngine(e.target.value)}
+                                  className="flex-1 px-2 py-1.5 text-xs bg-gray-50 text-gray-900 border-gray-300 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                >
+                                  <option value="SQLite">SQLite</option>
+                                  <option value="PostgreSQL">PostgreSQL</option>
+                                </select>
+                                <button
+                                  onClick={executeQuery}
+                                  className="flex items-center gap-1 px-3 py-1.5 bg-green-600 text-white hover:bg-green-700 rounded-lg transition text-xs"
+                                >
+                                  <Play className="w-3 h-3" />
+                                  Run
+                                </button>
+                              </div>
+                            </div>
+                            <div className="mb-2 flex items-center gap-2 text-xs text-gray-600">
+                              <Database className="w-3 h-3" />
+                              Engine: <span className="font-semibold">{selectedEngine}</span>
+                            </div>
+                            <textarea
+                              value={userQuery}
+                              onChange={(e) => setUserQuery(e.target.value)}
+                              placeholder="-- Write your SQL query here..."
+                              className="w-full h-48 md:h-64 p-3 rounded-lg font-mono text-xs focus:outline-none resize-none bg-gray-50 text-gray-900 border border-gray-300 focus:ring-2 focus:ring-blue-500"
+                            />
+                          </div>
+
+                          {showOutput && (result || error || isCorrect !== null) && (
+                            <div className="bg-white rounded-lg shadow-sm p-4">
+                              <div className="flex items-center justify-between mb-3">
+                                <h3 className="font-semibold text-gray-900 text-sm">Query Results</h3>
+                              </div>
+
+                              {isCorrect !== null && (
+                                <div className={`flex items-center gap-2 mb-3 p-3 rounded-lg ${
+                                  isCorrect 
+                                    ? 'bg-green-50 text-green-800'
+                                    : 'bg-red-50 text-red-800'
+                                }`}>
+                                  {isCorrect ? (
+                                    <>
+                                      <CheckCircle className="w-4 h-4 flex-shrink-0" />
+                                      <span className="font-semibold text-xs">Correct! Well done! 🎉</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <XCircle className="w-4 h-4 flex-shrink-0" />
+                                      <span className="font-semibold text-xs">Not quite right. Try again!</span>
+                                    </>
+                                  )}
+                                </div>
+                              )}
+
+                              {error && (
+                                <div className="border p-3 rounded-lg mb-3 border-red-200 bg-red-50 text-red-800 text-xs">
+                                  <strong>Error:</strong> {error}
+                                </div>
+                              )}
+
+                              {result && (
+                                <div>
+                                  <h4 className="font-semibold mb-2 text-xs text-gray-900">Your Output:</h4>
+                                  {result.values && result.values.length > 0 ? (
+                                    renderTable(result)
+                                  ) : (
+                                    <p className="text-gray-500 text-xs">Query executed successfully. No rows returned.</p>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </>
+                      ) : (
+                        <div className="bg-white rounded-lg shadow-sm p-6">
+                          <p className="text-center text-gray-500 text-sm">
+                            Select a question to start practicing.
+                          </p>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
               </div>
             )}
-          </div>
-
-          {/* Main Content Area with Resizable Panels */}
-          <div className="flex-1 flex overflow-hidden">
-            {/* Left Panel - Question Details */}
-            <div 
-              className="overflow-y-auto hide-scrollbar bg-gray-50"
-              style={{ width: `${leftPanelWidth}%` }}
-            >
-              <div className="p-4 space-y-4">
-                {activeQuestion ? (
-                  <>
-                    {/* Question Description */}
-                    <div className="bg-white rounded-lg shadow-sm p-6">
-                      <div className="flex items-start justify-between mb-4 gap-2">
-                        <h2 className="text-xl font-bold text-gray-900">{activeQuestion.title}</h2>
-                        <div className="flex gap-1">
-                          {completedQuestions.has(activeQuestion.id) && (
-                            <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 flex items-center">
-                              ✓ Completed
-                            </span>
-                          )}
-                          <span className={`px-3 py-1 rounded-full text-sm font-medium ${difficultyColor(activeQuestion.difficulty)} flex-shrink-0`}>
-                            {activeQuestion.difficulty}
-                          </span>
-                        </div>
-                      </div>
-                      <p className="text-base text-gray-700 mb-4">{activeQuestion.description}</p>
-                      <div className="bg-blue-50 border-l-4 border-blue-600 p-4 rounded">
-                        <p className="text-sm text-blue-800"><strong>Hint:</strong> {activeQuestion.hint}</p>
-                      </div>
-                      
-                      {activeQuestion.contributor && (
-                        <div className="mt-4 pt-4 border-t border-gray-200">
-                          <a
-                            href={activeQuestion.contributor.link}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-2 text-sm px-3 py-2 rounded-lg transition bg-gray-100 hover:bg-gray-200 text-gray-700"
-                          >
-                            <User className="w-4 h-4" />
-                            Contributor: {activeQuestion.contributor.name}
-                          </a>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Input Data Table */}
-                    <div className="bg-white rounded-lg shadow-sm p-6">
-                      <h3 className="font-semibold mb-3 flex items-center gap-2 text-gray-900 text-base">
-                        <Table className="w-4 h-4" />
-                        Input Data
-                      </h3>
-                      {SQL && (() => {
-                        try {
-                          const tempDb = new SQL.Database();
-                          tempDb.exec(activeQuestion.schema);
-                          const tables = tempDb.exec("SELECT name FROM sqlite_master WHERE type='table'");
-                          
-                          return tables[0].values.map(([tableName]) => {
-                            const data = tempDb.exec(`SELECT * FROM ${tableName}`);
-                            return (
-                              <div key={tableName} className="mb-4">
-                                <h4 className="text-sm font-medium mb-2 text-gray-700">{tableName}</h4>
-                                {renderTable(data[0])}
-                              </div>
-                            );
-                          });
-                        } catch (err) {
-                          return <p className="text-sm text-gray-500">Unable to display input data</p>;
-                        }
-                      })()}
-                    </div>
-
-                    {/* Expected Output */}
-                    <div className="bg-white rounded-lg shadow-sm p-6">
-                      <h3 className="font-semibold mb-3 flex items-center gap-2 text-gray-900 text-base">
-                        <CheckCircle className="w-4 h-4 text-green-600" />
-                        Expected Output
-                      </h3>
-                      {renderTable(activeQuestion.expectedResult)}
-                    </div>
-
-                    {/* Schema Display */}
-                    <div className="bg-white rounded-lg shadow-sm p-6">
-                      <h3 className="font-semibold mb-3 flex items-center gap-2 text-gray-900 text-base">
-                        <Code className="w-4 h-4" />
-                        Database Schema
-                      </h3>
-                      <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto text-xs">
-                        {activeQuestion.schema.trim()}
-                      </pre>
-                    </div>
-                  </>
-                ) : (
-                  <div className="bg-white rounded-lg shadow-sm p-6">
-                    <p className="text-center text-gray-500 text-base">
-                      No questions available for the selected filter.
-                    </p>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Resizer */}
-            <div
-              className={`resizer w-1 bg-gray-300 hover:bg-blue-400 cursor-col-resize flex-shrink-0 ${
-                isDragging ? 'dragging bg-blue-500' : ''
-              }`}
-              onMouseDown={() => setIsDragging(true)}
-            />
-
-            {/* Right Panel - SQL Editor and Results */}
-            <div 
-              className="overflow-y-auto hide-scrollbar bg-gray-50"
-              style={{ width: `${100 - leftPanelWidth}%` }}
-            >
-              <div className="p-4 space-y-4">
-                {activeQuestion ? (
-                  <>
-                    {/* SQL Editor */}
-                    <div className="bg-white rounded-lg shadow-sm p-6">
-                      <div className="flex items-center justify-between mb-3">
-                        <h3 className="font-semibold text-gray-900 text-base">Your SQL Query</h3>
-                        <div className="flex items-center gap-2">
-                          <select
-                            value={selectedEngine}
-                            onChange={(e) => setSelectedEngine(e.target.value)}
-                            className="px-3 py-2 text-sm bg-gray-50 text-gray-900 border-gray-300 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          >
-                            <option value="SQLite">SQLite</option>
-                            <option value="PostgreSQL">PostgreSQL</option>
-                          </select>
-                          <button
-                            onClick={executeQuery}
-                            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white hover:bg-green-700 rounded-lg transition text-sm"
-                          >
-                            <Play className="w-4 h-4" />
-                            Run
-                          </button>
-                        </div>
-                      </div>
-                      <div className="mb-2 flex items-center gap-2 text-xs text-gray-600">
-                        <Database className="w-3 h-3" />
-                        Running on: <span className="font-semibold">{selectedEngine}</span>
-                      </div>
-                      <textarea
-                        value={userQuery}
-                        onChange={(e) => setUserQuery(e.target.value)}
-                        placeholder="-- Write your SQL query here..."
-                        className="w-full h-64 p-4 rounded-lg font-mono text-sm focus:outline-none resize-none bg-gray-50 text-gray-900 border border-gray-300 focus:ring-2 focus:ring-blue-500"
-                      />
-                    </div>
-
-                    {/* Results */}
-                    {showOutput && (result || error || isCorrect !== null) && (
-                      <div className="bg-white rounded-lg shadow-sm p-6">
-                        <div className="flex items-center justify-between mb-4">
-                          <h3 className="font-semibold text-gray-900 text-base">Query Results</h3>
-                        </div>
-
-                        {isCorrect !== null && (
-                          <div className={`flex items-center gap-2 mb-4 p-4 rounded-lg ${
-                            isCorrect 
-                              ? 'bg-green-50 text-green-800'
-                              : 'bg-red-50 text-red-800'
-                          }`}>
-                            {isCorrect ? (
-                              <>
-                                <CheckCircle className="w-5 h-5 flex-shrink-0" />
-                                <span className="font-semibold text-sm">Correct! Well done! 🎉</span>
-                              </>
-                            ) : (
-                              <>
-                                <XCircle className="w-5 h-5 flex-shrink-0" />
-                                <span className="font-semibold text-sm">Not quite right. Compare your output with the expected output.</span>
-                              </>
-                            )}
-                          </div>
-                        )}
-
-                        {error && (
-                          <div className="border p-4 rounded-lg mb-4 border-red-200 bg-red-50 text-red-800 text-sm">
-                            <strong>Error:</strong> {error}
-                          </div>
-                        )}
-
-                        {result && (
-                          <div>
-                            <h4 className="font-semibold mb-3 text-sm text-gray-900">Your Output:</h4>
-                            {result.values && result.values.length > 0 ? (
-                              renderTable(result)
-                            ) : (
-                              <p className="text-gray-500 text-sm">Query executed successfully. No rows returned.</p>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </>
-                ) : (
-                  <div className="bg-white rounded-lg shadow-sm p-6">
-                    <p className="text-center text-gray-500 text-base">
-                      Select a question to start practicing.
-                    </p>
-                  </div>
-                )}
-              </div>
-            </div>
           </div>
         </div>
       </div>
