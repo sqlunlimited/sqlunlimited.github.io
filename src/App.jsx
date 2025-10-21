@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Play, CheckCircle, XCircle, Upload, Book, Code, Table, Github, RefreshCw, Filter, X, User, Search, Database, BookOpen, Info, Smartphone, ChevronLeft, ChevronRight } from 'lucide-react';
 
@@ -27,6 +28,11 @@ const SQLPracticePlatform = () => {
 
   // State for completed questions
   const [completedQuestions, setCompletedQuestions] = useState(new Set());
+
+  // Progressive loading states
+  const [questions, setQuestions] = useState([]);
+  const [questionsLoaded, setQuestionsLoaded] = useState(0);
+  const [totalQuestions, setTotalQuestions] = useState(0);
 
   const containerRef = useRef(null);
 
@@ -151,6 +157,19 @@ const SQLPracticePlatform = () => {
       .resizer.dragging {
         background: rgba(59, 130, 246, 0.5);
       }
+
+      .skeleton {
+        animation: skeleton-loading 1s linear infinite alternate;
+      }
+
+      @keyframes skeleton-loading {
+        0% {
+          background-color: hsl(200, 20%, 80%);
+        }
+        100% {
+          background-color: hsl(200, 20%, 95%);
+        }
+      }
     `;
     document.head.appendChild(style);
     return () => document.head.removeChild(style);
@@ -191,47 +210,79 @@ const SQLPracticePlatform = () => {
 
   // GitHub repository configuration
   const GITHUB_REPO = 'sqlunlimited/sql_questions';
+  const GITHUB_BRANCH = 'main';
   const QUESTIONS_FOLDER = 'questions';
-  const GITHUB_API = `https://api.github.com/repos/${GITHUB_REPO}/contents/${QUESTIONS_FOLDER}`;
 
-  const [questions, setQuestions] = useState([]);
-
-  // Load questions from GitHub repository
+  /**
+   * OPTIMIZED: Uses GitHub Tree API to get all files in ONE API call
+   * Then fetches raw files via cdn.jsdelivr.net (no rate limit!)
+   */
   const loadQuestionsFromGitHub = async () => {
     setLoadingQuestions(true);
+    setQuestions([]); // Clear existing questions first
+    setQuestionsLoaded(0);
+    setTotalQuestions(0);
+    
     try {
-      const response = await fetch(GITHUB_API);
+      // Method 1: Use GitHub Tree API (1 API call to get all file info)
+      const treeUrl = `https://api.github.com/repos/${GITHUB_REPO}/git/trees/${GITHUB_BRANCH}?recursive=1`;
+      const treeResponse = await fetch(treeUrl);
       
-      if (!response.ok) {
-        throw new Error('Failed to fetch questions from GitHub');
+      if (!treeResponse.ok) {
+        throw new Error('Failed to fetch repository tree');
       }
 
-      const files = await response.json();
-      const jsonFiles = files.filter(file => file.name.endsWith('.json'));
-
-      const loadedQuestions = [];
+      const treeData = await treeResponse.json();
       
-      for (const file of jsonFiles) {
+      // Filter JSON files in questions folder
+      const questionFiles = treeData.tree.filter(
+        item => item.path.startsWith(QUESTIONS_FOLDER) && 
+                item.path.endsWith('.json') && 
+                item.type === 'blob'
+      );
+
+      setTotalQuestions(questionFiles.length);
+
+      // Method 2: Use jsDelivr CDN for raw file access (NO RATE LIMIT!)
+      // jsDelivr format: https://cdn.jsdelivr.net/gh/user/repo@branch/path/to/file
+      const loadPromises = questionFiles.map(async (file) => {
         try {
-          const fileResponse = await fetch(file.download_url);
+          // Use jsDelivr CDN instead of GitHub raw content
+          const cdnUrl = `https://cdn.jsdelivr.net/gh/${GITHUB_REPO}@${GITHUB_BRANCH}/${file.path}`;
+          const fileResponse = await fetch(cdnUrl);
+          
+          if (!fileResponse.ok) {
+            throw new Error(`Failed to fetch ${file.path}`);
+          }
+          
           const questionData = await fileResponse.json();
-          // Use the filename (without .json) as the persistent ID
-          const persistentId = file.name.replace('.json', '');
-          loadedQuestions.push({
+          const fileName = file.path.split('/').pop();
+          const persistentId = fileName.replace('.json', '');
+          
+          const newQuestion = {
             ...questionData,
             id: persistentId,
-            filename: file.name
-          });
+            filename: fileName
+          };
+          
+          setQuestionsLoaded(prev => prev + 1);
+          
+          return newQuestion;
         } catch (err) {
-          console.error(`Error loading ${file.name}:`, err);
+          console.error(`Error loading ${file.path}:`, err);
+          setQuestionsLoaded(prev => prev + 1);
+          return null;
         }
-      }
+      });
 
-      if (loadedQuestions.length > 0) {
-        setQuestions(loadedQuestions);
-      } else {
-        setQuestions([]);
-      }
+      // Load all questions in parallel and set once
+      const loadedQuestions = await Promise.all(loadPromises);
+      const validQuestions = loadedQuestions.filter(q => q !== null);
+      
+      // Sort and set all questions at once
+      const sortedQuestions = validQuestions.sort((a, b) => a.id.localeCompare(b.id));
+      setQuestions(sortedQuestions);
+      
     } catch (err) {
       console.error('Error loading questions from GitHub:', err);
       setQuestions([]);
@@ -283,8 +334,13 @@ const SQLPracticePlatform = () => {
   }, []);
 
   // Load questions from GitHub on mount
+  const hasLoadedRef = useRef(false);
+  
   useEffect(() => {
-    loadQuestionsFromGitHub();
+    if (!hasLoadedRef.current) {
+      hasLoadedRef.current = true;
+      loadQuestionsFromGitHub();
+    }
   }, []);
 
   // Initialize database with current question's schema
@@ -337,9 +393,9 @@ const SQLPracticePlatform = () => {
 
   // Reset current question when filter changes if current question is not in filtered list
   useEffect(() => {
-    if (filteredQuestions.length > 0 && questions.length > 0) {
+    if (filteredQuestions.length > 0 && questions.length > 0 && questions[currentQuestion]) {
       const currentQ = questions[currentQuestion];
-      const currentQuestionInFilter = filteredQuestions.find(q => q.id === currentQ?.id);
+      const currentQuestionInFilter = filteredQuestions.find(q => q.id === currentQ.id);
       if (!currentQuestionInFilter) {
         const firstFilteredIndex = questions.findIndex(q => q.id === filteredQuestions[0].id);
         if (firstFilteredIndex >= 0) {
@@ -347,7 +403,7 @@ const SQLPracticePlatform = () => {
         }
       }
     }
-  }, [difficultyFilter, questions.length]);
+  }, [difficultyFilter, searchQuery, questions.length]);
 
   const normalizeResult = (result) => {
     if (!result || result.length === 0) return null;
@@ -570,12 +626,21 @@ const SQLPracticePlatform = () => {
     );
   }
 
-  if (questions.length === 0) {
+  // Show loading progress while questions load
+  const isInitialLoad = loadingQuestions && questions.length === 0;
+  const hasPartialQuestions = questions.length > 0 && loadingQuestions;
+
+  if (isInitialLoad) {
     return (
       <div className="flex items-center justify-center h-screen w-screen bg-gray-50 overflow-hidden">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading questions from GitHub...</p>
+          <p className="text-gray-600 text-lg font-semibold">Loading questions...</p>
+          {totalQuestions > 0 && (
+            <p className="text-gray-500 text-sm mt-2">
+              {questionsLoaded} / {totalQuestions} questions loaded
+            </p>
+          )}
         </div>
       </div>
     );
@@ -618,13 +683,18 @@ const SQLPracticePlatform = () => {
         </div>
       )}
 
-      {/* Header */}
+      {/* Header with loading indicator */}
       <div className="bg-white border-b shadow-sm border-gray-200 flex-shrink-0">
         <div className="px-3 md:px-4 py-3 md:py-4">
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2 md:gap-3 min-w-0">
               <Code className="w-6 h-6 md:w-8 md:h-8 text-blue-600 flex-shrink-0" />
               <h1 className="text-lg md:text-2xl font-bold text-gray-900 truncate">SQL_Unlimited</h1>
+              {hasPartialQuestions && (
+                <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full animate-pulse">
+                  Loading {questionsLoaded}/{totalQuestions}
+                </span>
+              )}
             </div>
             <div className="flex gap-2 md:gap-3 flex-shrink-0">
               <button
