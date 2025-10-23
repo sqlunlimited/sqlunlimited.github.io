@@ -108,85 +108,176 @@ const [showTestCases, setShowTestCases] = useState(false);
   };
 
   // Load streak data from IndexedDB
+  // const loadStreakData = async () => {
+  //   try {
+  //     const dbName = "SQLPlatformDB";
+  //     const storeName = "streakData";
+
+  //     const request = indexedDB.open(dbName, 2); // Increment version
+
+  //     request.onerror = () => {
+  //       console.error("Failed to open IndexedDB for streak");
+  //     };
+
+  //     request.onsuccess = (event) => {
+  //       const db = event.target.result;
+  //       if (!db.objectStoreNames.contains(storeName)) {
+  //         return;
+  //       }
+
+  //       const transaction = db.transaction([storeName], "readonly");
+  //       const objectStore = transaction.objectStore(storeName);
+  //       const getRequest = objectStore.get("streak");
+
+  //       getRequest.onsuccess = () => {
+  //         const data = getRequest.result;
+  //         if (data) {
+  //           const today = getTodayDate();
+  //           const lastSolved = data.lastSolvedDate;
+
+  //           // If last solved was today or yesterday, keep the streak
+  //           if (lastSolved === today || isConsecutiveDay(lastSolved, today)) {
+  //             setCurrentStreak(data.currentStreak || 0);
+  //           } else {
+  //             // Streak is broken but don't reset in DB yet
+  //             setCurrentStreak(0);
+  //           }
+  //           setLongestStreak(data.longestStreak || 0);
+  //         }
+  //       };
+  //     };
+
+  //     request.onupgradeneeded = (event) => {
+  //       const db = event.target.result;
+  //       if (!db.objectStoreNames.contains(storeName)) {
+  //         db.createObjectStore(storeName, { keyPath: "id" });
+  //       }
+  //     };
+  //   } catch (err) {
+  //     console.error("Error loading streak data:", err);
+  //   }
+  // };
+
+
   const loadStreakData = async () => {
-    try {
-      const dbName = "SQLPlatformDB";
-      const storeName = "streakData";
+  try {
+    const dbName = "SQLPlatformDB";
+    const storeName = "streakData";
 
-      const request = indexedDB.open(dbName, 2); // Increment version
+    const request = indexedDB.open(dbName, 3); // Use version 3
 
-      request.onerror = () => {
-        console.error("Failed to open IndexedDB for streak");
-      };
+    request.onerror = (event) => {
+      console.error("Failed to open IndexedDB for streak:", event.target.error);
+    };
 
-      request.onsuccess = (event) => {
-        const db = event.target.result;
-        if (!db.objectStoreNames.contains(storeName)) {
-          return;
-        }
+    request.onsuccess = (event) => {
+      const db = event.target.result;
+      if (!db.objectStoreNames.contains(storeName)) {
+        return;
+      }
 
-        const transaction = db.transaction([storeName], "readonly");
-        const objectStore = transaction.objectStore(storeName);
-        const getRequest = objectStore.get("streak");
+      const transaction = db.transaction([storeName], "readonly");
+      const objectStore = transaction.objectStore(storeName);
+      const getRequest = objectStore.get("streak");
 
-        getRequest.onsuccess = () => {
-          const data = getRequest.result;
-          if (data) {
-            const today = getTodayDate();
-            const lastSolved = data.lastSolvedDate;
+      getRequest.onsuccess = () => {
+        const data = getRequest.result;
+        if (data) {
+          const today = getTodayDate();
+          const lastSolved = data.lastSolvedDate;
 
-            // If last solved was today or yesterday, keep the streak
-            if (lastSolved === today || isConsecutiveDay(lastSolved, today)) {
-              setCurrentStreak(data.currentStreak || 0);
-            } else {
-              // Streak is broken but don't reset in DB yet
-              setCurrentStreak(0);
-            }
-            setLongestStreak(data.longestStreak || 0);
+          if (lastSolved === today || isConsecutiveDay(lastSolved, today)) {
+            setCurrentStreak(data.currentStreak || 0);
+          } else {
+            setCurrentStreak(0);
           }
-        };
-      };
-
-      request.onupgradeneeded = (event) => {
-        const db = event.target.result;
-        if (!db.objectStoreNames.contains(storeName)) {
-          db.createObjectStore(storeName, { keyPath: "id" });
+          setLongestStreak(data.longestStreak || 0);
         }
       };
-    } catch (err) {
-      console.error("Error loading streak data:", err);
-    }
-  };
+    };
+
+    request.onupgradeneeded = (event) => {
+      const db = event.target.result;
+      if (!db.objectStoreNames.contains(storeName)) {
+        db.createObjectStore(storeName, { keyPath: "id" });
+      }
+      if (!db.objectStoreNames.contains("completedQuestions")) {
+        db.createObjectStore("completedQuestions", { keyPath: "id" });
+      }
+    };
+  } catch (err) {
+    console.error("Error loading streak data:", err);
+  }
+};
 
   // Save streak data to IndexedDB
+  // const saveStreakData = async (streakData) => {
+  //   try {
+  //     const dbName = "SQLPlatformDB";
+  //     const storeName = "streakData";
+
+  //     const request = indexedDB.open(dbName, 2); // Increment version
+
+  //     request.onsuccess = (event) => {
+  //       const db = event.target.result;
+  //       const transaction = db.transaction([storeName], "readwrite");
+  //       const objectStore = transaction.objectStore(storeName);
+
+  //       objectStore.put({
+  //         id: "streak",
+  //         ...streakData,
+  //       });
+  //     };
+
+  //     request.onupgradeneeded = (event) => {
+  //       const db = event.target.result;
+  //       if (!db.objectStoreNames.contains(storeName)) {
+  //         db.createObjectStore(storeName, { keyPath: "id" });
+  //       }
+  //     };
+  //   } catch (err) {
+  //     console.error("Error saving streak data:", err);
+  //   }
+  // };
+
+
   const saveStreakData = async (streakData) => {
-    try {
-      const dbName = "SQLPlatformDB";
-      const storeName = "streakData";
+  try {
+    const dbName = "SQLPlatformDB";
+    const storeName = "streakData";
 
-      const request = indexedDB.open(dbName, 2); // Increment version
+    const request = indexedDB.open(dbName, 3); // Use version 3
 
-      request.onsuccess = (event) => {
-        const db = event.target.result;
-        const transaction = db.transaction([storeName], "readwrite");
-        const objectStore = transaction.objectStore(storeName);
+    request.onerror = (event) => {
+      console.error("Failed to save streak:", event.target.error);
+    };
 
-        objectStore.put({
-          id: "streak",
-          ...streakData,
-        });
-      };
+    request.onsuccess = (event) => {
+      const db = event.target.result;
+      const transaction = db.transaction([storeName], "readwrite");
+      const objectStore = transaction.objectStore(storeName);
 
-      request.onupgradeneeded = (event) => {
-        const db = event.target.result;
-        if (!db.objectStoreNames.contains(storeName)) {
-          db.createObjectStore(storeName, { keyPath: "id" });
-        }
-      };
-    } catch (err) {
-      console.error("Error saving streak data:", err);
-    }
-  };
+      objectStore.put({
+        id: "streak",
+        ...streakData,
+      });
+
+      console.log("Saved streak data:", streakData);
+    };
+
+    request.onupgradeneeded = (event) => {
+      const db = event.target.result;
+      if (!db.objectStoreNames.contains(storeName)) {
+        db.createObjectStore(storeName, { keyPath: "id" });
+      }
+      if (!db.objectStoreNames.contains("completedQuestions")) {
+        db.createObjectStore("completedQuestions", { keyPath: "id" });
+      }
+    };
+  } catch (err) {
+    console.error("Error saving streak data:", err);
+  }
+};
 
   // Update streak when a question is completed
   const updateStreak = async () => {
@@ -275,81 +366,205 @@ const [showTestCases, setShowTestCases] = useState(false);
   };
 
   // Load completed questions from IndexedDB on mount
-  useEffect(() => {
-    const loadCompletedQuestions = async () => {
-      try {
-        const dbName = "SQLPlatformDB";
-        const storeName = "completedQuestions";
+  // useEffect(() => {
+  //   const loadCompletedQuestions = async () => {
+  //     try {
+  //       const dbName = "SQLPlatformDB";
+  //       const storeName = "completedQuestions";
 
-        const request = indexedDB.open(dbName, 1);
+  //       const request = indexedDB.open(dbName, 1);
 
-        request.onerror = () => {
-          console.error("Failed to open IndexedDB");
-        };
+  //       request.onerror = () => {
+  //         console.error("Failed to open IndexedDB");
+  //       };
 
-        request.onsuccess = (event) => {
-          const db = event.target.result;
-          const transaction = db.transaction([storeName], "readonly");
-          const objectStore = transaction.objectStore(storeName);
-          const getAllRequest = objectStore.getAll();
+  //       request.onsuccess = (event) => {
+  //         const db = event.target.result;
+  //         const transaction = db.transaction([storeName], "readonly");
+  //         const objectStore = transaction.objectStore(storeName);
+  //         const getAllRequest = objectStore.getAll();
 
-          getAllRequest.onsuccess = () => {
-            const completedIds = getAllRequest.result.map((item) => item.id);
-            if (completedIds.length > 0) {
-              setCompletedQuestions(new Set(completedIds));
-            }
-          };
-        };
+  //         getAllRequest.onsuccess = () => {
+  //           const completedIds = getAllRequest.result.map((item) => item.id);
+  //           if (completedIds.length > 0) {
+  //             setCompletedQuestions(new Set(completedIds));
+  //           }
+  //         };
+  //       };
 
-        request.onupgradeneeded = (event) => {
-          const db = event.target.result;
-          if (!db.objectStoreNames.contains(storeName)) {
-            db.createObjectStore(storeName, { keyPath: "id" });
+  //       request.onupgradeneeded = (event) => {
+  //         const db = event.target.result;
+  //         if (!db.objectStoreNames.contains(storeName)) {
+  //           db.createObjectStore(storeName, { keyPath: "id" });
+  //         }
+  //       };
+  //     } catch (err) {
+  //       console.error("Error loading completed questions:", err);
+  //     }
+  //   };
+
+  //   loadCompletedQuestions();
+  // }, []);
+
+  // Load completed questions from IndexedDB on mount
+useEffect(() => {
+  const loadCompletedQuestions = async () => {
+    try {
+      const dbName = "SQLPlatformDB";
+      const storeName = "completedQuestions";
+
+      const request = indexedDB.open(dbName, 3); // Use version 3
+
+      request.onerror = (event) => {
+        console.error("Failed to open IndexedDB:", event.target.error);
+      };
+
+      request.onsuccess = (event) => {
+        const db = event.target.result;
+        
+        if (!db.objectStoreNames.contains(storeName)) {
+          console.warn("Store does not exist yet");
+          return;
+        }
+
+        const transaction = db.transaction([storeName], "readonly");
+        const objectStore = transaction.objectStore(storeName);
+        const getAllRequest = objectStore.getAll();
+
+        getAllRequest.onsuccess = () => {
+          const completedIds = getAllRequest.result.map((item) => item.id);
+          if (completedIds.length > 0) {
+            setCompletedQuestions(new Set(completedIds));
+            console.log("Loaded completed questions:", completedIds);
           }
         };
-      } catch (err) {
-        console.error("Error loading completed questions:", err);
-      }
-    };
 
-    loadCompletedQuestions();
-  }, []);
+        getAllRequest.onerror = (event) => {
+          console.error("Error getting completed questions:", event.target.error);
+        };
+      };
+
+      request.onupgradeneeded = (event) => {
+        const db = event.target.result;
+        
+        // Create completedQuestions store if it doesn't exist
+        if (!db.objectStoreNames.contains(storeName)) {
+          db.createObjectStore(storeName, { keyPath: "id" });
+          console.log("Created completedQuestions store");
+        }
+        
+        // Create streakData store if it doesn't exist
+        if (!db.objectStoreNames.contains("streakData")) {
+          db.createObjectStore("streakData", { keyPath: "id" });
+          console.log("Created streakData store");
+        }
+      };
+    } catch (err) {
+      console.error("Error loading completed questions:", err);
+    }
+  };
+
+  loadCompletedQuestions();
+}, []);
 
   // Save completed questions to IndexedDB whenever they change
-  useEffect(() => {
-    const saveCompletedQuestions = async () => {
-      if (completedQuestions.size === 0) return;
+  // useEffect(() => {
+  //   const saveCompletedQuestions = async () => {
+  //     if (completedQuestions.size === 0) return;
 
-      try {
-        const dbName = "SQLPlatformDB";
-        const storeName = "completedQuestions";
+  //     try {
+  //       const dbName = "SQLPlatformDB";
+  //       const storeName = "completedQuestions";
 
-        const request = indexedDB.open(dbName, 1);
+  //       const request = indexedDB.open(dbName, 1);
 
-        request.onsuccess = (event) => {
-          const db = event.target.result;
-          const transaction = db.transaction([storeName], "readwrite");
-          const objectStore = transaction.objectStore(storeName);
+  //       request.onsuccess = (event) => {
+  //         const db = event.target.result;
+  //         const transaction = db.transaction([storeName], "readwrite");
+  //         const objectStore = transaction.objectStore(storeName);
 
-          objectStore.clear();
+  //         objectStore.clear();
+  //         Array.from(completedQuestions).forEach((id) => {
+  //           objectStore.add({ id: id });
+  //         });
+  //       };
+
+  //       request.onupgradeneeded = (event) => {
+  //         const db = event.target.result;
+  //         if (!db.objectStoreNames.contains(storeName)) {
+  //           db.createObjectStore(storeName, { keyPath: "id" });
+  //         }
+  //       };
+  //     } catch (err) {
+  //       console.error("Error saving completed questions:", err);
+  //     }
+  //   };
+
+  //   saveCompletedQuestions();
+  // }, [completedQuestions]);
+
+
+  // Save completed questions to IndexedDB whenever they change
+useEffect(() => {
+  const saveCompletedQuestions = async () => {
+    if (completedQuestions.size === 0) return;
+
+    try {
+      const dbName = "SQLPlatformDB";
+      const storeName = "completedQuestions";
+
+      const request = indexedDB.open(dbName, 3); // Use version 3
+
+      request.onerror = (event) => {
+        console.error("Failed to open IndexedDB for saving:", event.target.error);
+      };
+
+      request.onsuccess = (event) => {
+        const db = event.target.result;
+        
+        if (!db.objectStoreNames.contains(storeName)) {
+          console.warn("Store does not exist, cannot save");
+          return;
+        }
+
+        const transaction = db.transaction([storeName], "readwrite");
+        const objectStore = transaction.objectStore(storeName);
+
+        // Clear and re-add all completed questions
+        const clearRequest = objectStore.clear();
+        
+        clearRequest.onsuccess = () => {
           Array.from(completedQuestions).forEach((id) => {
             objectStore.add({ id: id });
           });
+          console.log("Saved completed questions:", Array.from(completedQuestions));
         };
 
-        request.onupgradeneeded = (event) => {
-          const db = event.target.result;
-          if (!db.objectStoreNames.contains(storeName)) {
-            db.createObjectStore(storeName, { keyPath: "id" });
-          }
+        clearRequest.onerror = (event) => {
+          console.error("Error clearing store:", event.target.error);
         };
-      } catch (err) {
-        console.error("Error saving completed questions:", err);
-      }
-    };
 
-    saveCompletedQuestions();
-  }, [completedQuestions]);
+        transaction.onerror = (event) => {
+          console.error("Transaction error:", event.target.error);
+        };
+      };
+
+      request.onupgradeneeded = (event) => {
+        const db = event.target.result;
+        if (!db.objectStoreNames.contains(storeName)) {
+          db.createObjectStore(storeName, { keyPath: "id" });
+        }
+        if (!db.objectStoreNames.contains("streakData")) {
+          db.createObjectStore("streakData", { keyPath: "id" });
+        }
+      };
+    } catch (err) {
+      console.error("Error saving completed questions:", err);
+    }
+  };
+
+  saveCompletedQuestions();
+}, [completedQuestions]);
 
   // Load streak data on mount
   useEffect(() => {
