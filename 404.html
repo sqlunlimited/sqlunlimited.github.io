@@ -4,16 +4,8 @@
   <meta charset="utf-8">
   <title>SQL Unlimited - Redirecting...</title>
   <script>
-    // Get the current path and hash
-    var path = window.location.pathname;
-    var hash = window.location.hash;
-    
-    // If there's already a hash, preserve it
-    // Otherwise, treat the path as the hash
-    var redirectHash = hash || ('#' + path);
-    
-    // Redirect to root with the hash
-    window.location.replace(window.location.origin + '/' + redirectHash);
+    // Simply redirect everything to the root
+    window.location.replace(window.location.origin + '/');
   </script>
 </head>
 <body>
