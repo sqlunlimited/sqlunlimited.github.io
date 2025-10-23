@@ -287,7 +287,7 @@ const [showTestCases, setShowTestCases] = useState(false);
       const dbName = "SQLPlatformDB";
       const storeName = "streakData";
 
-      const request = indexedDB.open(dbName, 2);
+      const request = indexedDB.open(dbName, 3);
 
       request.onsuccess = (event) => {
         const db = event.target.result;
@@ -341,70 +341,6 @@ const [showTestCases, setShowTestCases] = useState(false);
     }
   };
 
-  // Get question ID from URL hash
-  const getQuestionIdFromUrl = () => {
-    const hash = window.location.hash;
-    if (hash.startsWith("#")) {
-      return hash.substring(1); // Remove the '#'
-    }
-    return null;
-  };
-
-  // Update URL with current question ID
-  const updateUrlWithQuestion = (questionId) => {
-    if (questionId) {
-      window.history.pushState(null, "", `#${questionId}`);
-    }
-  };
-
-  // Navigate to question by ID
-  const navigateToQuestionById = (questionId) => {
-    const index = questions.findIndex((q) => q.id === questionId);
-    if (index >= 0) {
-      setCurrentQuestion(index);
-    }
-  };
-
-  // Load completed questions from IndexedDB on mount
-  // useEffect(() => {
-  //   const loadCompletedQuestions = async () => {
-  //     try {
-  //       const dbName = "SQLPlatformDB";
-  //       const storeName = "completedQuestions";
-
-  //       const request = indexedDB.open(dbName, 1);
-
-  //       request.onerror = () => {
-  //         console.error("Failed to open IndexedDB");
-  //       };
-
-  //       request.onsuccess = (event) => {
-  //         const db = event.target.result;
-  //         const transaction = db.transaction([storeName], "readonly");
-  //         const objectStore = transaction.objectStore(storeName);
-  //         const getAllRequest = objectStore.getAll();
-
-  //         getAllRequest.onsuccess = () => {
-  //           const completedIds = getAllRequest.result.map((item) => item.id);
-  //           if (completedIds.length > 0) {
-  //             setCompletedQuestions(new Set(completedIds));
-  //           }
-  //         };
-  //       };
-
-  //       request.onupgradeneeded = (event) => {
-  //         const db = event.target.result;
-  //         if (!db.objectStoreNames.contains(storeName)) {
-  //           db.createObjectStore(storeName, { keyPath: "id" });
-  //         }
-  //       };
-  //     } catch (err) {
-  //       console.error("Error loading completed questions:", err);
-  //     }
-  //   };
-
-  //   loadCompletedQuestions();
-  // }, []);
 
   // Load completed questions from IndexedDB on mount
 useEffect(() => {
@@ -571,33 +507,6 @@ useEffect(() => {
     loadStreakData();
   }, []);
 
-  // Load question from URL on mount and handle browser back/forward
-  useEffect(() => {
-    // Load question from URL when questions are loaded
-    if (questions.length > 0) {
-      const questionIdFromUrl = getQuestionIdFromUrl();
-      if (questionIdFromUrl) {
-        navigateToQuestionById(questionIdFromUrl);
-      }
-    }
-
-    // Handle browser back/forward buttons
-    const handlePopState = () => {
-      const questionIdFromUrl = getQuestionIdFromUrl();
-      if (questionIdFromUrl && questions.length > 0) {
-        navigateToQuestionById(questionIdFromUrl);
-      }
-    };
-
-    window.addEventListener("popstate", handlePopState);
-    return () => window.removeEventListener("popstate", handlePopState);
-  }, [questions]);
-
-  useEffect(() => {
-    if (questions.length > 0 && questions[currentQuestion]) {
-      updateUrlWithQuestion(questions[currentQuestion].id);
-    }
-  }, [currentQuestion, questions]);
 
   // Add custom scrollbar styles
   useEffect(() => {
