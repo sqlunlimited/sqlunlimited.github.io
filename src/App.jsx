@@ -31,6 +31,8 @@ const AppContent = () => {
       <Route path="/home" element={<Navigate to="/" replace />} />
       <Route path="/about" element={<AboutPage onNavigate={handleNavigate} />} />
       <Route path="/practice" element={<SQLPracticePlatform onNavigate={handleNavigate} />} />
+      {/* NEW: Route for individual questions */}
+      <Route path="/practice/:questionId" element={<SQLPracticePlatform onNavigate={handleNavigate} />} />
       <Route path="/sql-practice-platform" element={<Navigate to="/practice" replace />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
@@ -46,8 +48,6 @@ const App = () => {
 };
 
 export default App;
-
-
 
 
 

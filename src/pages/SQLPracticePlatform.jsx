@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+
 import {
   Play,
   CheckCircle,
@@ -62,6 +64,9 @@ const SQLPracticePlatform = ({ onNavigate }) => {
   const [showStreakCelebration, setShowStreakCelebration] = useState(false);
 const [testCaseResults, setTestCaseResults] = useState([]);
 const [showTestCases, setShowTestCases] = useState(false);
+  const { questionId } = useParams(); // Get question ID from URL
+  const navigate = useNavigate(); // For programmatic navigation
+  
 
   const containerRef = useRef(null);
 
@@ -596,6 +601,35 @@ useEffect(() => {
       document.body.style.userSelect = "";
     };
   }, [isDragging, isMobile]);
+
+
+  useEffect(() => {
+    if (questions.length > 0 && questionId) {
+      const index = questions.findIndex(q => q.id === questionId);
+      if (index !== -1) {
+        setCurrentQuestion(index);
+      } else {
+        // Question not found, redirect to first question
+        navigate(`/practice/${questions[0].id}`, { replace: true });
+      }
+    } else if (questions.length > 0 && !questionId) {
+      // No question in URL, redirect to first question
+      navigate(`/practice/${questions[0].id}`, { replace: true });
+    }
+  }, [questionId, questions, navigate]);
+
+  // NEW: Update URL when question changes
+  useEffect(() => {
+    if (questions.length > 0 && questions[currentQuestion]) {
+      const currentQuestionId = questions[currentQuestion].id;
+      if (questionId !== currentQuestionId) {
+        navigate(`/practice/${currentQuestionId}`, { replace: true });
+      }
+    }
+  }, [currentQuestion, questions, navigate, questionId]);
+
+
+
 
   const GITHUB_REPO = "sqlunlimited/sql_questions";
   const GITHUB_BRANCH = "main";
@@ -1500,8 +1534,17 @@ useEffect(() => {
                 <span className="hidden sm:inline">About</span>
               </button> */}
 
-              <button
+              {/* <button
   onClick={() => onNavigate('landing')}
+  className="flex items-center gap-1 px-2 md:px-4 py-1.5 md:py-2 bg-blue-600 text-white hover:bg-blue-700 rounded-lg transition text-xs md:text-sm"
+>
+  <Home className="w-3 h-3 md:w-4 md:h-4" />
+  <span className="hidden sm:inline">Home</span>
+</button> */}
+
+
+<button
+  onClick={() => navigate('/')}
   className="flex items-center gap-1 px-2 md:px-4 py-1.5 md:py-2 bg-blue-600 text-white hover:bg-blue-700 rounded-lg transition text-xs md:text-sm"
 >
   <Home className="w-3 h-3 md:w-4 md:h-4" />
@@ -1701,6 +1744,20 @@ useEffect(() => {
                               {activeQuestion.title}
                             </h2>
                             <div className="flex gap-1">
+
+
+                              <button
+                                onClick={() => {
+                                  navigator.clipboard.writeText(window.location.href).then(() => {
+                                    alert('Question link copied!');
+                                  });
+                                }}
+                                className="p-2 rounded-lg bg-blue-100 hover:bg-blue-200 text-blue-600 transition"
+                                title="Share this question"
+                              >
+                                <Upload className="w-4 h-4" />
+                              </button>
+
                               {completedQuestions.has(activeQuestion.id) && (
                                 <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 flex items-center">
                                   ✓ Completed
@@ -2138,6 +2195,17 @@ useEffect(() => {
                                 {activeQuestion.title}
                               </h2>
                               <div className="flex flex-col gap-1">
+                                <button
+                onClick={() => {
+                  navigator.clipboard.writeText(window.location.href).then(() => {
+                    alert('Question link copied!');
+                  });
+                }}
+                className="p-1.5 rounded-lg bg-blue-100 hover:bg-blue-200 text-blue-600 transition"
+                title="Share this question"
+              >
+                <Upload className="w-3 h-3" />
+              </button>
                                 {completedQuestions.has(activeQuestion.id) && (
                                   <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 flex items-center whitespace-nowrap">
                                     ✓ Done
