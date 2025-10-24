@@ -59,8 +59,8 @@ const SQLPracticePlatform = ({ onNavigate }) => {
   const [currentStreak, setCurrentStreak] = useState(0);
   const [longestStreak, setLongestStreak] = useState(0);
   const [showStreakCelebration, setShowStreakCelebration] = useState(false);
-const [testCaseResults, setTestCaseResults] = useState([]);
-const [showTestCases, setShowTestCases] = useState(false);
+  const [testCaseResults, setTestCaseResults] = useState([]);
+  const [showTestCases, setShowTestCases] = useState(false);
   const { questionId } = useParams(); // Get question ID from URL
   const navigate = useNavigate(); // For programmatic navigation
   const containerRef = useRef(null);
@@ -148,48 +148,48 @@ const [showTestCases, setShowTestCases] = useState(false);
   //   }
   // };
   const loadStreakData = async () => {
-  try {
-    const dbName = "SQLPlatformDB";
-    const storeName = "streakData";
-    const request = indexedDB.open(dbName, 3); // Use version 3
-    request.onerror = (event) => {
-      console.error("Failed to open IndexedDB for streak:", event.target.error);
-    };
-    request.onsuccess = (event) => {
-      const db = event.target.result;
-      if (!db.objectStoreNames.contains(storeName)) {
-        return;
-      }
-      const transaction = db.transaction([storeName], "readonly");
-      const objectStore = transaction.objectStore(storeName);
-      const getRequest = objectStore.get("streak");
-      getRequest.onsuccess = () => {
-        const data = getRequest.result;
-        if (data) {
-          const today = getTodayDate();
-          const lastSolved = data.lastSolvedDate;
-          if (lastSolved === today || isConsecutiveDay(lastSolved, today)) {
-            setCurrentStreak(data.currentStreak || 0);
-          } else {
-            setCurrentStreak(0);
+    try {
+      const dbName = "SQLPlatformDB";
+      const storeName = "streakData";
+      const request = indexedDB.open(dbName, 3); // Use version 3
+      request.onerror = (event) => {
+        console.error("Failed to open IndexedDB for streak:", event.target.error);
+      };
+      request.onsuccess = (event) => {
+        const db = event.target.result;
+        if (!db.objectStoreNames.contains(storeName)) {
+          return;
+        }
+        const transaction = db.transaction([storeName], "readonly");
+        const objectStore = transaction.objectStore(storeName);
+        const getRequest = objectStore.get("streak");
+        getRequest.onsuccess = () => {
+          const data = getRequest.result;
+          if (data) {
+            const today = getTodayDate();
+            const lastSolved = data.lastSolvedDate;
+            if (lastSolved === today || isConsecutiveDay(lastSolved, today)) {
+              setCurrentStreak(data.currentStreak || 0);
+            } else {
+              setCurrentStreak(0);
+            }
+            setLongestStreak(data.longestStreak || 0);
           }
-          setLongestStreak(data.longestStreak || 0);
+        };
+      };
+      request.onupgradeneeded = (event) => {
+        const db = event.target.result;
+        if (!db.objectStoreNames.contains(storeName)) {
+          db.createObjectStore(storeName, { keyPath: "id" });
+        }
+        if (!db.objectStoreNames.contains("completedQuestions")) {
+          db.createObjectStore("completedQuestions", { keyPath: "id" });
         }
       };
-    };
-    request.onupgradeneeded = (event) => {
-      const db = event.target.result;
-      if (!db.objectStoreNames.contains(storeName)) {
-        db.createObjectStore(storeName, { keyPath: "id" });
-      }
-      if (!db.objectStoreNames.contains("completedQuestions")) {
-        db.createObjectStore("completedQuestions", { keyPath: "id" });
-      }
-    };
-  } catch (err) {
-    console.error("Error loading streak data:", err);
-  }
-};
+    } catch (err) {
+      console.error("Error loading streak data:", err);
+    }
+  };
   // Save streak data to IndexedDB
   // const saveStreakData = async (streakData) => {
   //   try {
@@ -216,36 +216,36 @@ const [showTestCases, setShowTestCases] = useState(false);
   //   }
   // };
   const saveStreakData = async (streakData) => {
-  try {
-    const dbName = "SQLPlatformDB";
-    const storeName = "streakData";
-    const request = indexedDB.open(dbName, 3); // Use version 3
-    request.onerror = (event) => {
-      console.error("Failed to save streak:", event.target.error);
-    };
-    request.onsuccess = (event) => {
-      const db = event.target.result;
-      const transaction = db.transaction([storeName], "readwrite");
-      const objectStore = transaction.objectStore(storeName);
-      objectStore.put({
-        id: "streak",
-        ...streakData,
-      });
-      console.log("Saved streak data:", streakData);
-    };
-    request.onupgradeneeded = (event) => {
-      const db = event.target.result;
-      if (!db.objectStoreNames.contains(storeName)) {
-        db.createObjectStore(storeName, { keyPath: "id" });
-      }
-      if (!db.objectStoreNames.contains("completedQuestions")) {
-        db.createObjectStore("completedQuestions", { keyPath: "id" });
-      }
-    };
-  } catch (err) {
-    console.error("Error saving streak data:", err);
-  }
-};
+    try {
+      const dbName = "SQLPlatformDB";
+      const storeName = "streakData";
+      const request = indexedDB.open(dbName, 3); // Use version 3
+      request.onerror = (event) => {
+        console.error("Failed to save streak:", event.target.error);
+      };
+      request.onsuccess = (event) => {
+        const db = event.target.result;
+        const transaction = db.transaction([storeName], "readwrite");
+        const objectStore = transaction.objectStore(storeName);
+        objectStore.put({
+          id: "streak",
+          ...streakData,
+        });
+        console.log("Saved streak data:", streakData);
+      };
+      request.onupgradeneeded = (event) => {
+        const db = event.target.result;
+        if (!db.objectStoreNames.contains(storeName)) {
+          db.createObjectStore(storeName, { keyPath: "id" });
+        }
+        if (!db.objectStoreNames.contains("completedQuestions")) {
+          db.createObjectStore("completedQuestions", { keyPath: "id" });
+        }
+      };
+    } catch (err) {
+      console.error("Error saving streak data:", err);
+    }
+  };
   // Update streak when a question is completed
   const updateStreak = async () => {
     const today = getTodayDate();
@@ -298,54 +298,54 @@ const [showTestCases, setShowTestCases] = useState(false);
     }
   };
   // Load completed questions from IndexedDB on mount
-useEffect(() => {
-  const loadCompletedQuestions = async () => {
-    try {
-      const dbName = "SQLPlatformDB";
-      const storeName = "completedQuestions";
-      const request = indexedDB.open(dbName, 3); // Use version 3
-      request.onerror = (event) => {
-        console.error("Failed to open IndexedDB:", event.target.error);
-      };
-      request.onsuccess = (event) => {
-        const db = event.target.result;
-        if (!db.objectStoreNames.contains(storeName)) {
-          console.warn("Store does not exist yet");
-          return;
-        }
-        const transaction = db.transaction([storeName], "readonly");
-        const objectStore = transaction.objectStore(storeName);
-        const getAllRequest = objectStore.getAll();
-        getAllRequest.onsuccess = () => {
-          const completedIds = getAllRequest.result.map((item) => item.id);
-          if (completedIds.length > 0) {
-            setCompletedQuestions(new Set(completedIds));
-            console.log("Loaded completed questions:", completedIds);
+  useEffect(() => {
+    const loadCompletedQuestions = async () => {
+      try {
+        const dbName = "SQLPlatformDB";
+        const storeName = "completedQuestions";
+        const request = indexedDB.open(dbName, 3); // Use version 3
+        request.onerror = (event) => {
+          console.error("Failed to open IndexedDB:", event.target.error);
+        };
+        request.onsuccess = (event) => {
+          const db = event.target.result;
+          if (!db.objectStoreNames.contains(storeName)) {
+            console.warn("Store does not exist yet");
+            return;
+          }
+          const transaction = db.transaction([storeName], "readonly");
+          const objectStore = transaction.objectStore(storeName);
+          const getAllRequest = objectStore.getAll();
+          getAllRequest.onsuccess = () => {
+            const completedIds = getAllRequest.result.map((item) => item.id);
+            if (completedIds.length > 0) {
+              setCompletedQuestions(new Set(completedIds));
+              console.log("Loaded completed questions:", completedIds);
+            }
+          };
+          getAllRequest.onerror = (event) => {
+            console.error("Error getting completed questions:", event.target.error);
+          };
+        };
+        request.onupgradeneeded = (event) => {
+          const db = event.target.result;
+          // Create completedQuestions store if it doesn't exist
+          if (!db.objectStoreNames.contains(storeName)) {
+            db.createObjectStore(storeName, { keyPath: "id" });
+            console.log("Created completedQuestions store");
+          }
+          // Create streakData store if it doesn't exist
+          if (!db.objectStoreNames.contains("streakData")) {
+            db.createObjectStore("streakData", { keyPath: "id" });
+            console.log("Created streakData store");
           }
         };
-        getAllRequest.onerror = (event) => {
-          console.error("Error getting completed questions:", event.target.error);
-        };
-      };
-      request.onupgradeneeded = (event) => {
-        const db = event.target.result;
-        // Create completedQuestions store if it doesn't exist
-        if (!db.objectStoreNames.contains(storeName)) {
-          db.createObjectStore(storeName, { keyPath: "id" });
-          console.log("Created completedQuestions store");
-        }
-        // Create streakData store if it doesn't exist
-        if (!db.objectStoreNames.contains("streakData")) {
-          db.createObjectStore("streakData", { keyPath: "id" });
-          console.log("Created streakData store");
-        }
-      };
-    } catch (err) {
-      console.error("Error loading completed questions:", err);
-    }
-  };
-  loadCompletedQuestions();
-}, []);
+      } catch (err) {
+        console.error("Error loading completed questions:", err);
+      }
+    };
+    loadCompletedQuestions();
+  }, []);
   // Save completed questions to IndexedDB whenever they change
   // useEffect(() => {
   //   const saveCompletedQuestions = async () => {
@@ -376,54 +376,54 @@ useEffect(() => {
   //   saveCompletedQuestions();
   // }, [completedQuestions]);
   // Save completed questions to IndexedDB whenever they change
-useEffect(() => {
-  const saveCompletedQuestions = async () => {
-    if (completedQuestions.size === 0) return;
-    try {
-      const dbName = "SQLPlatformDB";
-      const storeName = "completedQuestions";
-      const request = indexedDB.open(dbName, 3); // Use version 3
-      request.onerror = (event) => {
-        console.error("Failed to open IndexedDB for saving:", event.target.error);
-      };
-      request.onsuccess = (event) => {
-        const db = event.target.result;
-        if (!db.objectStoreNames.contains(storeName)) {
-          console.warn("Store does not exist, cannot save");
-          return;
-        }
-        const transaction = db.transaction([storeName], "readwrite");
-        const objectStore = transaction.objectStore(storeName);
-        // Clear and re-add all completed questions
-        const clearRequest = objectStore.clear();
-        clearRequest.onsuccess = () => {
-          Array.from(completedQuestions).forEach((id) => {
-            objectStore.add({ id: id });
-          });
-          console.log("Saved completed questions:", Array.from(completedQuestions));
+  useEffect(() => {
+    const saveCompletedQuestions = async () => {
+      if (completedQuestions.size === 0) return;
+      try {
+        const dbName = "SQLPlatformDB";
+        const storeName = "completedQuestions";
+        const request = indexedDB.open(dbName, 3); // Use version 3
+        request.onerror = (event) => {
+          console.error("Failed to open IndexedDB for saving:", event.target.error);
         };
-        clearRequest.onerror = (event) => {
-          console.error("Error clearing store:", event.target.error);
+        request.onsuccess = (event) => {
+          const db = event.target.result;
+          if (!db.objectStoreNames.contains(storeName)) {
+            console.warn("Store does not exist, cannot save");
+            return;
+          }
+          const transaction = db.transaction([storeName], "readwrite");
+          const objectStore = transaction.objectStore(storeName);
+          // Clear and re-add all completed questions
+          const clearRequest = objectStore.clear();
+          clearRequest.onsuccess = () => {
+            Array.from(completedQuestions).forEach((id) => {
+              objectStore.add({ id: id });
+            });
+            console.log("Saved completed questions:", Array.from(completedQuestions));
+          };
+          clearRequest.onerror = (event) => {
+            console.error("Error clearing store:", event.target.error);
+          };
+          transaction.onerror = (event) => {
+            console.error("Transaction error:", event.target.error);
+          };
         };
-        transaction.onerror = (event) => {
-          console.error("Transaction error:", event.target.error);
+        request.onupgradeneeded = (event) => {
+          const db = event.target.result;
+          if (!db.objectStoreNames.contains(storeName)) {
+            db.createObjectStore(storeName, { keyPath: "id" });
+          }
+          if (!db.objectStoreNames.contains("streakData")) {
+            db.createObjectStore("streakData", { keyPath: "id" });
+          }
         };
-      };
-      request.onupgradeneeded = (event) => {
-        const db = event.target.result;
-        if (!db.objectStoreNames.contains(storeName)) {
-          db.createObjectStore(storeName, { keyPath: "id" });
-        }
-        if (!db.objectStoreNames.contains("streakData")) {
-          db.createObjectStore("streakData", { keyPath: "id" });
-        }
-      };
-    } catch (err) {
-      console.error("Error saving completed questions:", err);
-    }
-  };
-  saveCompletedQuestions();
-}, [completedQuestions]);
+      } catch (err) {
+        console.error("Error saving completed questions:", err);
+      }
+    };
+    saveCompletedQuestions();
+  }, [completedQuestions]);
   // Load streak data on mount
   useEffect(() => {
     loadStreakData();
@@ -727,14 +727,14 @@ useEffect(() => {
       return;
     }
 
-      // ADD THESE LINES TO CLEAR CHECK SOLUTION OUTPUT
-  setShowOutput(false);
-  setResult(null);
-  setError('');
-  setIsCorrect(null);
-  setShowTestCases(false);
-  setTestCaseResults([]);
-  // END OF NEW LINES
+    // ADD THESE LINES TO CLEAR CHECK SOLUTION OUTPUT
+    setShowOutput(false);
+    setResult(null);
+    setError('');
+    setIsCorrect(null);
+    setShowTestCases(false);
+    setTestCaseResults([]);
+    // END OF NEW LINES
 
 
     if (selectedEngine === 'SQLite' && !db) {
@@ -750,7 +750,7 @@ useEffect(() => {
     try {
       setTestError('');
       setShowTestOutput(true);
-      
+
       let resultData;
 
       if (selectedEngine === 'SQLite') {
@@ -760,12 +760,12 @@ useEffect(() => {
         const queryResult = await pgDb.query(userQuery);
         resultData = {
           columns: queryResult.fields?.map(f => f.name) || [],
-          values: queryResult.rows?.map(row => 
+          values: queryResult.rows?.map(row =>
             queryResult.fields.map(f => row[f.name])
           ) || []
         };
       }
-      
+
       setTestResult(resultData);
     } catch (err) {
       setTestError(err.message);
@@ -858,198 +858,198 @@ useEffect(() => {
   //   }
   // };
   const executeQuery = async () => {
-  if (!userQuery.trim()) {
-    setError("Please enter a query");
-    return;
-  }
-  if (selectedEngine === "SQLite" && !db) {
-    setError("SQLite database not initialized");
-    return;
-  }
-  if (selectedEngine === "PostgreSQL" && !pgDb) {
-    setError("PostgreSQL database not initialized");
-    return;
-  }
-  try {
-        setShowTestOutput(false);
-    setTestResult(null);
-    setTestError('');
-
-    setError("");
-    setShowOutput(true);
-    const currentQ = questions[currentQuestion];
-    // Check if question uses new test case format or old format
-    const hasTestCases = currentQ.testCases && currentQ.testCases.length > 0;
-    if (hasTestCases) {
-      // NEW FORMAT: Run all test cases
-      const results = [];
-      let allPassed = true;
-      for (const testCase of currentQ.testCases) {
-        try {
-          // Create a fresh database for this test case
-          let testDb, normalizedUser, resultData;
-          if (selectedEngine === "SQLite") {
-            testDb = new SQL.Database();
-            testDb.exec(testCase.schema);
-            const userResult = testDb.exec(userQuery);
-            normalizedUser = normalizeResult(userResult);
-            resultData = userResult.length > 0 ? userResult[0] : { columns: [], values: [] };
-          } else {
-            testDb = await PGlite.create();
-            await testDb.exec(testCase.schema);
-            const userResult = await testDb.query(userQuery);
-            normalizedUser = normalizePGResult(userResult);
-            resultData = {
-              columns: userResult.fields?.map((f) => f.name) || [],
-              values: userResult.rows?.map((row) =>
-                userResult.fields.map((f) => row[f.name])
-              ) || [],
-            };
-            await testDb.close();
-          }
-          const expected = testCase.expectedResult;
-          const normalizedExpected = {
-            columns: expected.columns.map((c) => c.toLowerCase()),
-            values: expected.values.map((row) =>
-              row.map((cell) =>
-                typeof cell === "number" ? Math.round(cell * 100) / 100 : cell
-              )
-            ),
-          };
-          const matches =
-            normalizedUser &&
-            JSON.stringify(normalizedUser.columns.sort()) ===
-              JSON.stringify(normalizedExpected.columns.sort()) &&
-            JSON.stringify(normalizedUser.values.sort()) ===
-              JSON.stringify(normalizedExpected.values.sort());
-          results.push({
-            name: testCase.name,
-            visible: testCase.visible,
-            passed: matches,
-            output: resultData,
-            expected: expected,
-          });
-          if (!matches) allPassed = false;
-        } catch (err) {
-          results.push({
-            name: testCase.name,
-            visible: testCase.visible,
-            passed: false,
-            error: err.message,
-          });
-          allPassed = false;
-        }
-      }
-      setTestCaseResults(results);
-      setIsCorrect(allPassed);
-      setResult(results[0]?.output || null); // Show first test case output
-      setShowTestCases(true);
-      // Mark as completed if all test cases passed
-      if (allPassed) {
-        const currentQuestionId = questions[currentQuestion]?.id;
-        if (currentQuestionId !== undefined) {
-          if (!completedQuestions.has(currentQuestionId)) {
-            setCompletedQuestions((prevSet) => {
-              const newSet = new Set(prevSet);
-              newSet.add(currentQuestionId);
-              return newSet;
-            });
-            updateStreak();
-          }
-        }
-      }
-    } else {
-      // OLD FORMAT: Use existing logic with expectedResult
-      let normalizedUser, resultData;
-      if (selectedEngine === "SQLite") {
-        const userResult = db.exec(userQuery);
-        normalizedUser = normalizeResult(userResult);
-        resultData = userResult.length > 0 ? userResult[0] : { columns: [], values: [] };
-      } else {
-        const userResult = await pgDb.query(userQuery);
-        normalizedUser = normalizePGResult(userResult);
-        resultData = {
-          columns: userResult.fields?.map((f) => f.name) || [],
-          values: userResult.rows?.map((row) =>
-            userResult.fields.map((f) => row[f.name])
-          ) || [],
-        };
-      }
-      const expected = currentQ.expectedResult;
-      const normalizedExpected = {
-        columns: expected.columns.map((c) => c.toLowerCase()),
-        values: expected.values.map((row) =>
-          row.map((cell) =>
-            typeof cell === "number" ? Math.round(cell * 100) / 100 : cell
-          )
-        ),
-      };
-      const matches =
-        normalizedUser &&
-        JSON.stringify(normalizedUser.columns.sort()) ===
-          JSON.stringify(normalizedExpected.columns.sort()) &&
-        JSON.stringify(normalizedUser.values.sort()) ===
-          JSON.stringify(normalizedExpected.values.sort());
-      setIsCorrect(matches);
-      setResult(resultData);
-      setShowTestCases(false);
-      if (matches) {
-        const currentQuestionId = questions[currentQuestion]?.id;
-        if (currentQuestionId !== undefined) {
-          if (!completedQuestions.has(currentQuestionId)) {
-            setCompletedQuestions((prevSet) => {
-              const newSet = new Set(prevSet);
-              newSet.add(currentQuestionId);
-              return newSet;
-            });
-            updateStreak();
-          }
-        }
-      }
+    if (!userQuery.trim()) {
+      setError("Please enter a query");
+      return;
     }
-  } catch (err) {
-    setError(err.message);
-    setResult(null);
-    setIsCorrect(false);
-    setShowOutput(true);
-    setShowTestCases(false);
-  }
-};
+    if (selectedEngine === "SQLite" && !db) {
+      setError("SQLite database not initialized");
+      return;
+    }
+    if (selectedEngine === "PostgreSQL" && !pgDb) {
+      setError("PostgreSQL database not initialized");
+      return;
+    }
+    try {
+      setShowTestOutput(false);
+      setTestResult(null);
+      setTestError('');
+
+      setError("");
+      setShowOutput(true);
+      const currentQ = questions[currentQuestion];
+      // Check if question uses new test case format or old format
+      const hasTestCases = currentQ.testCases && currentQ.testCases.length > 0;
+      if (hasTestCases) {
+        // NEW FORMAT: Run all test cases
+        const results = [];
+        let allPassed = true;
+        for (const testCase of currentQ.testCases) {
+          try {
+            // Create a fresh database for this test case
+            let testDb, normalizedUser, resultData;
+            if (selectedEngine === "SQLite") {
+              testDb = new SQL.Database();
+              testDb.exec(testCase.schema);
+              const userResult = testDb.exec(userQuery);
+              normalizedUser = normalizeResult(userResult);
+              resultData = userResult.length > 0 ? userResult[0] : { columns: [], values: [] };
+            } else {
+              testDb = await PGlite.create();
+              await testDb.exec(testCase.schema);
+              const userResult = await testDb.query(userQuery);
+              normalizedUser = normalizePGResult(userResult);
+              resultData = {
+                columns: userResult.fields?.map((f) => f.name) || [],
+                values: userResult.rows?.map((row) =>
+                  userResult.fields.map((f) => row[f.name])
+                ) || [],
+              };
+              await testDb.close();
+            }
+            const expected = testCase.expectedResult;
+            const normalizedExpected = {
+              columns: expected.columns.map((c) => c.toLowerCase()),
+              values: expected.values.map((row) =>
+                row.map((cell) =>
+                  typeof cell === "number" ? Math.round(cell * 100) / 100 : cell
+                )
+              ),
+            };
+            const matches =
+              normalizedUser &&
+              JSON.stringify(normalizedUser.columns.sort()) ===
+              JSON.stringify(normalizedExpected.columns.sort()) &&
+              JSON.stringify(normalizedUser.values.sort()) ===
+              JSON.stringify(normalizedExpected.values.sort());
+            results.push({
+              name: testCase.name,
+              visible: testCase.visible,
+              passed: matches,
+              output: resultData,
+              expected: expected,
+            });
+            if (!matches) allPassed = false;
+          } catch (err) {
+            results.push({
+              name: testCase.name,
+              visible: testCase.visible,
+              passed: false,
+              error: err.message,
+            });
+            allPassed = false;
+          }
+        }
+        setTestCaseResults(results);
+        setIsCorrect(allPassed);
+        setResult(results[0]?.output || null); // Show first test case output
+        setShowTestCases(true);
+        // Mark as completed if all test cases passed
+        if (allPassed) {
+          const currentQuestionId = questions[currentQuestion]?.id;
+          if (currentQuestionId !== undefined) {
+            if (!completedQuestions.has(currentQuestionId)) {
+              setCompletedQuestions((prevSet) => {
+                const newSet = new Set(prevSet);
+                newSet.add(currentQuestionId);
+                return newSet;
+              });
+              updateStreak();
+            }
+          }
+        }
+      } else {
+        // OLD FORMAT: Use existing logic with expectedResult
+        let normalizedUser, resultData;
+        if (selectedEngine === "SQLite") {
+          const userResult = db.exec(userQuery);
+          normalizedUser = normalizeResult(userResult);
+          resultData = userResult.length > 0 ? userResult[0] : { columns: [], values: [] };
+        } else {
+          const userResult = await pgDb.query(userQuery);
+          normalizedUser = normalizePGResult(userResult);
+          resultData = {
+            columns: userResult.fields?.map((f) => f.name) || [],
+            values: userResult.rows?.map((row) =>
+              userResult.fields.map((f) => row[f.name])
+            ) || [],
+          };
+        }
+        const expected = currentQ.expectedResult;
+        const normalizedExpected = {
+          columns: expected.columns.map((c) => c.toLowerCase()),
+          values: expected.values.map((row) =>
+            row.map((cell) =>
+              typeof cell === "number" ? Math.round(cell * 100) / 100 : cell
+            )
+          ),
+        };
+        const matches =
+          normalizedUser &&
+          JSON.stringify(normalizedUser.columns.sort()) ===
+          JSON.stringify(normalizedExpected.columns.sort()) &&
+          JSON.stringify(normalizedUser.values.sort()) ===
+          JSON.stringify(normalizedExpected.values.sort());
+        setIsCorrect(matches);
+        setResult(resultData);
+        setShowTestCases(false);
+        if (matches) {
+          const currentQuestionId = questions[currentQuestion]?.id;
+          if (currentQuestionId !== undefined) {
+            if (!completedQuestions.has(currentQuestionId)) {
+              setCompletedQuestions((prevSet) => {
+                const newSet = new Set(prevSet);
+                newSet.add(currentQuestionId);
+                return newSet;
+              });
+              updateStreak();
+            }
+          }
+        }
+      }
+    } catch (err) {
+      setError(err.message);
+      setResult(null);
+      setIsCorrect(false);
+      setShowOutput(true);
+      setShowTestCases(false);
+    }
+  };
   // NEW: Share to LinkedIn Function
-//   const shareToLinkedIn = () => {
-//     if (!activeQuestion || !isCorrect) return;
-    
-//     const questionTitle = activeQuestion.title;
-//     const questionId = activeQuestion.id;
-//     const difficulty = activeQuestion.difficulty;
-//     const questionUrl = `${window.location.origin}/practice/${questionId}`;
-    
-//     const shareText = `🎉 Just solved "${questionTitle}" on SQL Unlimited!
+  //   const shareToLinkedIn = () => {
+  //     if (!activeQuestion || !isCorrect) return;
 
-// 📊 Difficulty: ${difficulty}
-// 💻 Platform: SQL Unlimited - Interactive SQL Practice
-// 🔗 Try it yourself: ${questionUrl}
+  //     const questionTitle = activeQuestion.title;
+  //     const questionId = activeQuestion.id;
+  //     const difficulty = activeQuestion.difficulty;
+  //     const questionUrl = `${window.location.origin}/practice/${questionId}`;
 
-// #SQL #DataScience #Learning #SQLUnlimited #CodingChallenge`;
+  //     const shareText = `🎉 Just solved "${questionTitle}" on SQL Unlimited!
 
-//     const linkedInUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(questionUrl)}&summary=${encodeURIComponent(shareText)}`;
-    
-//     window.open(linkedInUrl, '_blank', 'width=600,height=600');
-//   };
+  // 📊 Difficulty: ${difficulty}
+  // 💻 Platform: SQL Unlimited - Interactive SQL Practice
+  // 🔗 Try it yourself: ${questionUrl}
 
+  // #SQL #DataScience #Learning #SQLUnlimited #CodingChallenge`;
 
+  //     const linkedInUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(questionUrl)}&summary=${encodeURIComponent(shareText)}`;
+
+  //     window.open(linkedInUrl, '_blank', 'width=600,height=600');
+  //   };
 
 
 
-const shareToLinkedIn = () => {
-  if (!activeQuestion || !isCorrect) return;
-  
-  const questionTitle = activeQuestion.title;
-  const questionId = activeQuestion.id;
-  const difficulty = activeQuestion.difficulty;
-  const questionUrl = `${window.location.origin}/practice/${questionId}`;
-  
-  const shareText = `🎉 Just solved "${questionTitle}" on SQL Unlimited!
+
+
+  const shareToLinkedIn = () => {
+    if (!activeQuestion || !isCorrect) return;
+
+    const questionTitle = activeQuestion.title;
+    const questionId = activeQuestion.id;
+    const difficulty = activeQuestion.difficulty;
+    const questionUrl = `${window.location.origin}/practice/${questionId}`;
+
+    const shareText = `🎉 Just solved "${questionTitle}" on SQL Unlimited!
 
 📊 Difficulty: ${difficulty}
 💻 Platform: SQL Unlimited - Interactive SQL Practice
@@ -1057,11 +1057,11 @@ const shareToLinkedIn = () => {
 
 #SQL #DataScience #Learning #SQLUnlimited #CodingChallenge`;
 
-  // Use the LinkedIn share URL with text parameter
-  const linkedInUrl = `https://www.linkedin.com/feed/?shareActive=true&text=${encodeURIComponent(shareText)}`;
-  
-  window.open(linkedInUrl, '_blank', 'width=600,height=600');
-};
+    // Use the LinkedIn share URL with text parameter
+    const linkedInUrl = `https://www.linkedin.com/feed/?shareActive=true&text=${encodeURIComponent(shareText)}`;
+
+    window.open(linkedInUrl, '_blank', 'width=600,height=600');
+  };
 
 
 
@@ -1362,13 +1362,12 @@ const shareToLinkedIn = () => {
                         setCurrentQuestion(actualIndex);
                         setShowMobileQuestionsList(false);
                       }}
-                      className={`w-full text-left p-3 rounded-lg transition ${
-                        isActive
+                      className={`w-full text-left p-3 rounded-lg transition ${isActive
                           ? "bg-blue-50 border-2 border-blue-600"
                           : isCompleted
-                          ? "bg-green-50 border-2 border-green-600"
-                          : "bg-gray-50 hover:bg-gray-100 border-2 border-transparent"
-                      }`}
+                            ? "bg-green-50 border-2 border-green-600"
+                            : "bg-gray-50 hover:bg-gray-100 border-2 border-transparent"
+                        }`}
                     >
                       <div className="flex items-center justify-between">
                         <div className="font-medium text-sm text-gray-900 truncate flex-1">
@@ -1419,9 +1418,8 @@ const shareToLinkedIn = () => {
               </h1>
               {currentStreak > 0 && (
                 <div
-                  className={`flex items-center gap-1 px-2 md:px-3 py-1 bg-gradient-to-r from-orange-400 to-red-500 text-white rounded-full shadow-lg ${
-                    showStreakCelebration ? "animate-bounce" : ""
-                  }`}
+                  className={`flex items-center gap-1 px-2 md:px-3 py-1 bg-gradient-to-r from-orange-400 to-red-500 text-white rounded-full shadow-lg ${showStreakCelebration ? "animate-bounce" : ""
+                    }`}
                 >
                   <Flame className="w-3 h-3 md:w-4 md:h-4" />
                   <span className="text-xs md:text-sm font-bold">
@@ -1458,13 +1456,13 @@ const shareToLinkedIn = () => {
   <Home className="w-3 h-3 md:w-4 md:h-4" />
   <span className="hidden sm:inline">Home</span>
 </button> */}
-<button
-  onClick={() => navigate('/')}
-  className="flex items-center gap-1 px-2 md:px-4 py-1.5 md:py-2 bg-blue-600 text-white hover:bg-blue-700 rounded-lg transition text-xs md:text-sm"
->
-  <Home className="w-3 h-3 md:w-4 md:h-4" />
-  <span className="hidden sm:inline">Home</span>
-</button>
+              <button
+                onClick={() => navigate('/')}
+                className="flex items-center gap-1 px-2 md:px-4 py-1.5 md:py-2 bg-blue-600 text-white hover:bg-blue-700 rounded-lg transition text-xs md:text-sm"
+              >
+                <Home className="w-3 h-3 md:w-4 md:h-4" />
+                <span className="hidden sm:inline">Home</span>
+              </button>
               <button
                 onClick={() =>
                   window.open(`https://github.com/${GITHUB_REPO}`, "_blank")
@@ -1483,9 +1481,8 @@ const shareToLinkedIn = () => {
           {/* Desktop Questions List */}
           {!isMobile && (
             <div
-              className={`bg-white border-r border-gray-200 flex flex-col overflow-hidden transition-all duration-300 ${
-                isQuestionsPanelCollapsed ? "w-16" : "w-64"
-              }`}
+              className={`bg-white border-r border-gray-200 flex flex-col overflow-hidden transition-all duration-300 ${isQuestionsPanelCollapsed ? "w-16" : "w-64"
+                }`}
             >
               {isQuestionsPanelCollapsed ? (
                 <div className="flex flex-col h-full">
@@ -1512,9 +1509,8 @@ const shareToLinkedIn = () => {
                               q,
                               isActive
                             )} text-white border-2`}
-                            title={`${q.id}. ${q.title}${
-                              completedQuestions.has(q.id) ? " - COMPLETED" : ""
-                            }`}
+                            title={`${q.id}. ${q.title}${completedQuestions.has(q.id) ? " - COMPLETED" : ""
+                              }`}
                           >
                             {q.id.substring(0, 3).toUpperCase()}
                             {completedQuestions.has(q.id) && (
@@ -1584,13 +1580,12 @@ const shareToLinkedIn = () => {
                           <button
                             key={q.id}
                             onClick={() => setCurrentQuestion(actualIndex)}
-                            className={`w-full text-left p-3 rounded-lg transition ${
-                              isActive
+                            className={`w-full text-left p-3 rounded-lg transition ${isActive
                                 ? "bg-blue-50 border-2 border-blue-600"
                                 : isCompleted
-                                ? "bg-green-50 border-2 border-green-600"
-                                : "bg-gray-50 hover:bg-gray-100 border-2 border-transparent"
-                            }`}
+                                  ? "bg-green-50 border-2 border-green-600"
+                                  : "bg-gray-50 hover:bg-gray-100 border-2 border-transparent"
+                              }`}
                           >
                             <div className="flex items-center justify-between">
                               <div className="font-medium text-sm text-gray-900 truncate flex-1">
@@ -1650,7 +1645,7 @@ const shareToLinkedIn = () => {
                               {activeQuestion.title}
                             </h2>
                             <div className="flex gap-1">
-                              <button
+                              {/* <button
                                 onClick={() => {
                                   navigator.clipboard.writeText(window.location.href).then(() => {
                                     alert('Question link copied!');
@@ -1660,7 +1655,7 @@ const shareToLinkedIn = () => {
                                 title="Share this question"
                               >
                                 <Upload className="w-4 h-4" />
-                              </button>
+                              </button> */}
                               {completedQuestions.has(activeQuestion.id) && (
                                 <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 flex items-center">
                                   ✓ Completed
@@ -1760,9 +1755,8 @@ const shareToLinkedIn = () => {
                 </div>
                 {/* Resizer */}
                 <div
-                  className={`resizer w-1 bg-gray-300 hover:bg-blue-400 cursor-col-resize flex-shrink-0 ${
-                    isDragging ? "dragging bg-blue-500" : ""
-                  }`}
+                  className={`resizer w-1 bg-gray-300 hover:bg-blue-400 cursor-col-resize flex-shrink-0 ${isDragging ? "dragging bg-blue-500" : ""
+                    }`}
                   onMouseDown={() => setIsDragging(true)}
                 />
                 {/* Right Panel - SQL Editor */}
@@ -1877,55 +1871,54 @@ const shareToLinkedIn = () => {
                               )}
                             </div>
                           )} */}
-                          {showOutput && (result || error || isCorrect !== null) && (
-  <div className="bg-white rounded-lg shadow-sm p-6">
-    <div className="flex items-center justify-between mb-4">
-      <h3 className="font-semibold text-gray-900 text-base">
-        Query Results
-      </h3>
-    </div>
-    {isCorrect !== null && (
-      <div className={`flex items-center justify-between gap-2 mb-4 p-4 rounded-lg ${
-        isCorrect ? "bg-green-50 text-green-800" : "bg-red-50 text-red-800"
-      }`}>
-        <div className="flex items-center gap-2">
-          {isCorrect ? (
-            <>
-              <CheckCircle className="w-5 h-5 flex-shrink-0" />
-              <span className="font-semibold text-sm">
-                Correct! Well done! 🎉
-              </span>
-            </>
-          ) : (
-            <>
-              <XCircle className="w-5 h-5 flex-shrink-0" />
-              <span className="font-semibold text-sm">
-                Not quite right. {showTestCases ? "Check test case results below." : "Compare your output with the expected output."}
-              </span>
-            </>
-          )}
-        </div>
-        {isCorrect && (
-          <button
-            onClick={shareToLinkedIn}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white hover:bg-blue-700 rounded-lg transition text-xs font-medium flex-shrink-0"
-            title="Share your achievement on LinkedIn"
-          >
-            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.762 2.239 5 5 5h14c2.762 0 5-2.238 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"/>
-            </svg>
-            Share
-          </button>
-        )}
-      </div>
-    )}
-    {error && (
-      <div className="border p-4 rounded-lg mb-4 border-red-200 bg-red-50 text-red-800 text-sm">
-        <strong>Error:</strong> {error}
-      </div>
-    )}
-    {/* TEST CASE RESULTS */}
-    {/* {showTestCases && testCaseResults.length > 0 && (
+                        {showOutput && (result || error || isCorrect !== null) && (
+                          <div className="bg-white rounded-lg shadow-sm p-6">
+                            <div className="flex items-center justify-between mb-4">
+                              <h3 className="font-semibold text-gray-900 text-base">
+                                Query Results
+                              </h3>
+                            </div>
+                            {isCorrect !== null && (
+                              <div className={`flex items-center justify-between gap-2 mb-4 p-4 rounded-lg ${isCorrect ? "bg-green-50 text-green-800" : "bg-red-50 text-red-800"
+                                }`}>
+                                <div className="flex items-center gap-2">
+                                  {isCorrect ? (
+                                    <>
+                                      <CheckCircle className="w-5 h-5 flex-shrink-0" />
+                                      <span className="font-semibold text-sm">
+                                        Correct! Well done! 🎉
+                                      </span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <XCircle className="w-5 h-5 flex-shrink-0" />
+                                      <span className="font-semibold text-sm">
+                                        Not quite right. {showTestCases ? "Check test case results below." : "Compare your output with the expected output."}
+                                      </span>
+                                    </>
+                                  )}
+                                </div>
+                                {isCorrect && (
+                                  <button
+                                    onClick={shareToLinkedIn}
+                                    className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white hover:bg-blue-700 rounded-lg transition text-xs font-medium flex-shrink-0"
+                                    title="Share your achievement on LinkedIn"
+                                  >
+                                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                                      <path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.762 2.239 5 5 5h14c2.762 0 5-2.238 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z" />
+                                    </svg>
+                                    Share
+                                  </button>
+                                )}
+                              </div>
+                            )}
+                            {error && (
+                              <div className="border p-4 rounded-lg mb-4 border-red-200 bg-red-50 text-red-800 text-sm">
+                                <strong>Error:</strong> {error}
+                              </div>
+                            )}
+                            {/* TEST CASE RESULTS */}
+                            {/* {showTestCases && testCaseResults.length > 0 && (
       <div className="space-y-3 mb-4">
         <h4 className="font-semibold text-sm text-gray-900 flex items-center gap-2">
           <Table className="w-4 h-4" />
@@ -1973,79 +1966,77 @@ const shareToLinkedIn = () => {
         )}
       </div>
     )} */}
-    {/* TEST CASE RESULTS */}
-{showTestCases && testCaseResults.length > 0 && (
-  <div className="space-y-3 mb-4">
-    <h4 className="font-semibold text-sm text-gray-900 flex items-center gap-2">
-      <Table className="w-4 h-4" />
-      Test Cases: {testCaseResults.filter(tc => tc.passed).length} / {testCaseResults.length} Passed
-    </h4>
-    {testCaseResults.map((tc, idx) => (
-      tc.visible && (
-        <div key={idx} className={`border rounded-lg p-4 ${
-          tc.passed ? "border-green-300 bg-green-50" : "border-red-300 bg-red-50"
-        }`}>
-          <div className="flex items-center justify-between mb-3">
-            <span className="font-medium text-sm">
-              {tc.name}
-            </span>
-            <span className={`text-xs px-2 py-1 rounded font-semibold ${
-              tc.passed ? "bg-green-200 text-green-800" : "bg-red-200 text-red-800"
-            }`}>
-              {tc.passed ? "✓ Passed" : "✗ Failed"}
-            </span>
-          </div>
-          {tc.error ? (
-            <div className="text-sm text-red-700 mb-2 p-2 bg-red-100 rounded">
-              <strong>Error:</strong> {tc.error}
-            </div>
-          ) : (
-            <div className="space-y-3">
-              <div>
-                <p className="text-sm font-semibold text-gray-700 mb-2">Your Output:</p>
-                <div className="border border-gray-300 rounded">
-                  {tc.output && tc.output.values && tc.output.values.length > 0 ? (
-                    renderTable(tc.output)
-                  ) : (
-                    <p className="text-xs text-gray-500 p-3">No rows returned</p>
-                  )}
-                </div>
-              </div>
-              <div>
-                <p className="text-sm font-semibold text-gray-700 mb-2">Expected Output:</p>
-                <div className="border border-gray-300 rounded">
-                  {renderTable(tc.expected)}
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      )
-    ))}
-    {testCaseResults.some(tc => !tc.visible) && (
-      <div className="text-sm text-gray-600 italic p-3 bg-gray-100 rounded">
-        ℹ️ + {testCaseResults.filter(tc => !tc.visible).length} hidden test case(s) {testCaseResults.filter(tc => !tc.visible && tc.passed).length > 0 ? `(${testCaseResults.filter(tc => !tc.visible && tc.passed).length} passed)` : ''}
-      </div>
-    )}
-  </div>
-)}
-    {/* SINGLE OUTPUT (for non-test-case questions) */}
-    {!showTestCases && result && (
-      <div>
-        <h4 className="font-semibold mb-3 text-sm text-gray-900">
-          Your Output:
-        </h4>
-        {result.values && result.values.length > 0 ? (
-          renderTable(result)
-        ) : (
-          <p className="text-gray-500 text-sm">
-            Query executed successfully. No rows returned.
-          </p>
-        )}
-      </div>
-    )}
-  </div>
-)}
+                            {/* TEST CASE RESULTS */}
+                            {showTestCases && testCaseResults.length > 0 && (
+                              <div className="space-y-3 mb-4">
+                                <h4 className="font-semibold text-sm text-gray-900 flex items-center gap-2">
+                                  <Table className="w-4 h-4" />
+                                  Test Cases: {testCaseResults.filter(tc => tc.passed).length} / {testCaseResults.length} Passed
+                                </h4>
+                                {testCaseResults.map((tc, idx) => (
+                                  tc.visible && (
+                                    <div key={idx} className={`border rounded-lg p-4 ${tc.passed ? "border-green-300 bg-green-50" : "border-red-300 bg-red-50"
+                                      }`}>
+                                      <div className="flex items-center justify-between mb-3">
+                                        <span className="font-medium text-sm">
+                                          {tc.name}
+                                        </span>
+                                        <span className={`text-xs px-2 py-1 rounded font-semibold ${tc.passed ? "bg-green-200 text-green-800" : "bg-red-200 text-red-800"
+                                          }`}>
+                                          {tc.passed ? "✓ Passed" : "✗ Failed"}
+                                        </span>
+                                      </div>
+                                      {tc.error ? (
+                                        <div className="text-sm text-red-700 mb-2 p-2 bg-red-100 rounded">
+                                          <strong>Error:</strong> {tc.error}
+                                        </div>
+                                      ) : (
+                                        <div className="space-y-3">
+                                          <div>
+                                            <p className="text-sm font-semibold text-gray-700 mb-2">Your Output:</p>
+                                            <div className="border border-gray-300 rounded">
+                                              {tc.output && tc.output.values && tc.output.values.length > 0 ? (
+                                                renderTable(tc.output)
+                                              ) : (
+                                                <p className="text-xs text-gray-500 p-3">No rows returned</p>
+                                              )}
+                                            </div>
+                                          </div>
+                                          <div>
+                                            <p className="text-sm font-semibold text-gray-700 mb-2">Expected Output:</p>
+                                            <div className="border border-gray-300 rounded">
+                                              {renderTable(tc.expected)}
+                                            </div>
+                                          </div>
+                                        </div>
+                                      )}
+                                    </div>
+                                  )
+                                ))}
+                                {testCaseResults.some(tc => !tc.visible) && (
+                                  <div className="text-sm text-gray-600 italic p-3 bg-gray-100 rounded">
+                                    ℹ️ + {testCaseResults.filter(tc => !tc.visible).length} hidden test case(s) {testCaseResults.filter(tc => !tc.visible && tc.passed).length > 0 ? `(${testCaseResults.filter(tc => !tc.visible && tc.passed).length} passed)` : ''}
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                            {/* SINGLE OUTPUT (for non-test-case questions) */}
+                            {!showTestCases && result && (
+                              <div>
+                                <h4 className="font-semibold mb-3 text-sm text-gray-900">
+                                  Your Output:
+                                </h4>
+                                {result.values && result.values.length > 0 ? (
+                                  renderTable(result)
+                                ) : (
+                                  <p className="text-gray-500 text-sm">
+                                    Query executed successfully. No rows returned.
+                                  </p>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        )}
                         {/* NEW: Test Query Output Section */}
                         {showTestOutput && (testResult || testError) && (
                           <div className="bg-white rounded-lg shadow-sm p-6 mt-4">
@@ -2104,21 +2095,19 @@ const shareToLinkedIn = () => {
                     {/* Add gap-1 for spacing between buttons AND p-1 for padding from edges */}
                     <button
                       onClick={() => setMobileActiveTab("question")}
-                      className={`flex-1 py-2 px-3 text-sm font-medium rounded transition ${
-                        mobileActiveTab === "question"
+                      className={`flex-1 py-2 px-3 text-sm font-medium rounded transition ${mobileActiveTab === "question"
                           ? "bg-blue-100 text-blue-700 border-b-2 border-blue-600"
                           : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-                      }`}
+                        }`}
                     >
                       Question
                     </button>
                     <button
                       onClick={() => setMobileActiveTab("editor")}
-                      className={`flex-1 py-2 px-3 text-sm font-medium rounded transition ${
-                        mobileActiveTab === "editor"
+                      className={`flex-1 py-2 px-3 text-sm font-medium rounded transition ${mobileActiveTab === "editor"
                           ? "bg-blue-100 text-blue-700 border-b-2 border-blue-600"
                           : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-                      }`}
+                        }`}
                     >
                       SQL Editor
                     </button>
@@ -2137,16 +2126,16 @@ const shareToLinkedIn = () => {
                               </h2>
                               <div className="flex flex-col gap-1">
                                 <button
-                onClick={() => {
-                  navigator.clipboard.writeText(window.location.href).then(() => {
-                    alert('Question link copied!');
-                  });
-                }}
-                className="p-1.5 rounded-lg bg-blue-100 hover:bg-blue-200 text-blue-600 transition"
-                title="Share this question"
-              >
-                <Upload className="w-3 h-3" />
-              </button>
+                                  onClick={() => {
+                                    navigator.clipboard.writeText(window.location.href).then(() => {
+                                      alert('Question link copied!');
+                                    });
+                                  }}
+                                  className="p-1.5 rounded-lg bg-blue-100 hover:bg-blue-200 text-blue-600 transition"
+                                  title="Share this question"
+                                >
+                                  <Upload className="w-3 h-3" />
+                                </button>
                                 {completedQuestions.has(activeQuestion.id) && (
                                   <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 flex items-center whitespace-nowrap">
                                     ✓ Done
@@ -2349,53 +2338,52 @@ const shareToLinkedIn = () => {
                                 )}
                               </div>
                             )} */}
-                            {showOutput &&
-  (result || error || isCorrect !== null) && (
-    <div className="bg-white rounded-lg shadow-sm p-4">
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="font-semibold text-gray-900 text-sm">
-          Query Results
-        </h3>
-      </div>
-      {isCorrect !== null && (
-        <div className={`mb-3 p-3 rounded-lg ${
-          isCorrect
-            ? 'bg-green-50 text-green-800'
-            : 'bg-red-50 text-red-800'
-        }`}>
-          <div className="flex items-center gap-2 mb-2">
-            {isCorrect ? (
-              <>
-                <CheckCircle className="w-4 h-4 flex-shrink-0" />
-                <span className="font-semibold text-xs">Correct! Well done! 🎉</span>
-              </>
-            ) : (
-              <>
-                <XCircle className="w-4 h-4 flex-shrink-0" />
-                <span className="font-semibold text-xs">Not quite right. Try again!</span>
-              </>
-            )}
-          </div>
-          {isCorrect && (
-            <button
-              onClick={shareToLinkedIn}
-              className="w-full flex items-center justify-center gap-1.5 px-3 py-2 bg-blue-600 text-white hover:bg-blue-700 rounded-lg transition text-xs font-medium mt-2"
-            >
-              <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.762 2.239 5 5 5h14c2.762 0 5-2.238 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"/>
-              </svg>
-              Share on LinkedIn
-            </button>
-          )}
-        </div>
-      )}
-      {error && (
-        <div className="border p-3 rounded-lg mb-3 border-red-200 bg-red-50 text-red-800 text-xs">
-          <strong>Error:</strong> {error}
-        </div>
-      )}
-      {/* TEST CASE RESULTS - MOBILE */}
-      {/* {showTestCases && testCaseResults.length > 0 && (
+                          {showOutput &&
+                            (result || error || isCorrect !== null) && (
+                              <div className="bg-white rounded-lg shadow-sm p-4">
+                                <div className="flex items-center justify-between mb-3">
+                                  <h3 className="font-semibold text-gray-900 text-sm">
+                                    Query Results
+                                  </h3>
+                                </div>
+                                {isCorrect !== null && (
+                                  <div className={`mb-3 p-3 rounded-lg ${isCorrect
+                                      ? 'bg-green-50 text-green-800'
+                                      : 'bg-red-50 text-red-800'
+                                    }`}>
+                                    <div className="flex items-center gap-2 mb-2">
+                                      {isCorrect ? (
+                                        <>
+                                          <CheckCircle className="w-4 h-4 flex-shrink-0" />
+                                          <span className="font-semibold text-xs">Correct! Well done! 🎉</span>
+                                        </>
+                                      ) : (
+                                        <>
+                                          <XCircle className="w-4 h-4 flex-shrink-0" />
+                                          <span className="font-semibold text-xs">Not quite right. Try again!</span>
+                                        </>
+                                      )}
+                                    </div>
+                                    {isCorrect && (
+                                      <button
+                                        onClick={shareToLinkedIn}
+                                        className="w-full flex items-center justify-center gap-1.5 px-3 py-2 bg-blue-600 text-white hover:bg-blue-700 rounded-lg transition text-xs font-medium mt-2"
+                                      >
+                                        <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
+                                          <path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.762 2.239 5 5 5h14c2.762 0 5-2.238 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z" />
+                                        </svg>
+                                        Share on LinkedIn
+                                      </button>
+                                    )}
+                                  </div>
+                                )}
+                                {error && (
+                                  <div className="border p-3 rounded-lg mb-3 border-red-200 bg-red-50 text-red-800 text-xs">
+                                    <strong>Error:</strong> {error}
+                                  </div>
+                                )}
+                                {/* TEST CASE RESULTS - MOBILE */}
+                                {/* {showTestCases && testCaseResults.length > 0 && (
         <div className="space-y-2 mb-3">
           <h4 className="font-semibold text-xs text-gray-900 flex items-center gap-2">
             <Table className="w-3 h-3" />
@@ -2443,118 +2431,116 @@ const shareToLinkedIn = () => {
           )}
         </div>
       )} */}
-      {/* TEST CASE RESULTS - MOBILE */}
-{showTestCases && testCaseResults.length > 0 && (
-  <div className="space-y-2 mb-3">
-    <h4 className="font-semibold text-xs text-gray-900 flex items-center gap-2">
-      <Table className="w-3 h-3" />
-      Test Cases: {testCaseResults.filter(tc => tc.passed).length} / {testCaseResults.length} Passed
-    </h4>
-    {testCaseResults.map((tc, idx) => (
-      tc.visible && (
-        <div key={idx} className={`border rounded-lg p-3 ${
-          tc.passed ? "border-green-300 bg-green-50" : "border-red-300 bg-red-50"
-        }`}>
-          <div className="flex items-center justify-between mb-2">
-            <span className="font-medium text-xs">
-              {tc.name}
-            </span>
-            <span className={`text-xs px-2 py-0.5 rounded font-semibold ${
-              tc.passed ? "bg-green-200 text-green-800" : "bg-red-200 text-red-800"
-            }`}>
-              {tc.passed ? "✓ Pass" : "✗ Fail"}
-            </span>
-          </div>
-          {tc.error ? (
-            <div className="text-xs text-red-700 mb-2 p-2 bg-red-100 rounded">
-              <strong>Error:</strong> {tc.error}
-            </div>
-          ) : (
-            <div className="space-y-2">
-              <div>
-                <p className="text-xs font-semibold text-gray-700 mb-1">Your Output:</p>
-                <div className="border border-gray-300 rounded">
-                  {tc.output && tc.output.values && tc.output.values.length > 0 ? (
-                    renderTable(tc.output)
-                  ) : (
-                    <p className="text-xs text-gray-500 p-2">No rows returned</p>
-                  )}
-                </div>
-              </div>
-              <div>
-                <p className="text-xs font-semibold text-gray-700 mb-1">Expected:</p>
-                <div className="border border-gray-300 rounded">
-                  {renderTable(tc.expected)}
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      )
-    ))}
-    {testCaseResults.some(tc => !tc.visible) && (
-      <div className="text-xs text-gray-600 italic p-2 bg-gray-100 rounded">
-        ℹ️ + {testCaseResults.filter(tc => !tc.visible).length} hidden test case(s)
-      </div>
-    )}
-  </div>
-)}
-      {/* SINGLE OUTPUT (for non-test-case questions) - MOBILE */}
-      {!showTestCases && result && (
-        <div>
-          <h4 className="font-semibold mb-2 text-xs text-gray-900">
-            Your Output:
-          </h4>
-          {result.values &&
-          result.values.length > 0 ? (
-            renderTable(result)
-          ) : (
-            <p className="text-gray-500 text-xs">
-              Query executed successfully. No rows
-              returned.
-            </p>
-          )}
-        </div>
-      )}
-    </div>
-  )}
-                        {/* NEW: Mobile Test Query Output */}
-                        {showTestOutput && (testResult || testError) && (
-                          <div className="bg-white rounded-lg shadow-sm p-4 mt-3">
-                            <div className="flex items-center justify-between mb-3">
-                              <h3 className="font-semibold text-gray-900 text-sm">Test Results</h3>
-                              <button
-                                onClick={() => {
-                                  setShowTestOutput(false);
-                                  setTestResult(null);
-                                  setTestError('');
-                                }}
-                                // className="text-gray-400 hover:text-gray-600"
-                                className="p-2 rounded-lg bg-gray-100 hover:bg-gray-100 transition"
-                                title="Close test results"
-                              >
-                                <X className="w-4 h-4" />
-                              </button>
-                            </div>
-
-                            {testError && (
-                              <div className="border p-3 rounded-lg mb-3 border-orange-200 bg-orange-50 text-orange-800 text-xs">
-                                <strong>Error:</strong> {testError}
-                              </div>
-                            )}
-
-                            {testResult && (
-                              <div>
-                                <h4 className="font-semibold mb-2 text-xs text-gray-900">Query Output:</h4>
-                                {testResult.values && testResult.values.length > 0 ? (
-                                  renderTable(testResult)
-                                ) : (
-                                  <p className="text-gray-500 text-xs">Query executed successfully. No rows returned.</p>
+                                {/* TEST CASE RESULTS - MOBILE */}
+                                {showTestCases && testCaseResults.length > 0 && (
+                                  <div className="space-y-2 mb-3">
+                                    <h4 className="font-semibold text-xs text-gray-900 flex items-center gap-2">
+                                      <Table className="w-3 h-3" />
+                                      Test Cases: {testCaseResults.filter(tc => tc.passed).length} / {testCaseResults.length} Passed
+                                    </h4>
+                                    {testCaseResults.map((tc, idx) => (
+                                      tc.visible && (
+                                        <div key={idx} className={`border rounded-lg p-3 ${tc.passed ? "border-green-300 bg-green-50" : "border-red-300 bg-red-50"
+                                          }`}>
+                                          <div className="flex items-center justify-between mb-2">
+                                            <span className="font-medium text-xs">
+                                              {tc.name}
+                                            </span>
+                                            <span className={`text-xs px-2 py-0.5 rounded font-semibold ${tc.passed ? "bg-green-200 text-green-800" : "bg-red-200 text-red-800"
+                                              }`}>
+                                              {tc.passed ? "✓ Pass" : "✗ Fail"}
+                                            </span>
+                                          </div>
+                                          {tc.error ? (
+                                            <div className="text-xs text-red-700 mb-2 p-2 bg-red-100 rounded">
+                                              <strong>Error:</strong> {tc.error}
+                                            </div>
+                                          ) : (
+                                            <div className="space-y-2">
+                                              <div>
+                                                <p className="text-xs font-semibold text-gray-700 mb-1">Your Output:</p>
+                                                <div className="border border-gray-300 rounded">
+                                                  {tc.output && tc.output.values && tc.output.values.length > 0 ? (
+                                                    renderTable(tc.output)
+                                                  ) : (
+                                                    <p className="text-xs text-gray-500 p-2">No rows returned</p>
+                                                  )}
+                                                </div>
+                                              </div>
+                                              <div>
+                                                <p className="text-xs font-semibold text-gray-700 mb-1">Expected:</p>
+                                                <div className="border border-gray-300 rounded">
+                                                  {renderTable(tc.expected)}
+                                                </div>
+                                              </div>
+                                            </div>
+                                          )}
+                                        </div>
+                                      )
+                                    ))}
+                                    {testCaseResults.some(tc => !tc.visible) && (
+                                      <div className="text-xs text-gray-600 italic p-2 bg-gray-100 rounded">
+                                        ℹ️ + {testCaseResults.filter(tc => !tc.visible).length} hidden test case(s)
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                                {/* SINGLE OUTPUT (for non-test-case questions) - MOBILE */}
+                                {!showTestCases && result && (
+                                  <div>
+                                    <h4 className="font-semibold mb-2 text-xs text-gray-900">
+                                      Your Output:
+                                    </h4>
+                                    {result.values &&
+                                      result.values.length > 0 ? (
+                                      renderTable(result)
+                                    ) : (
+                                      <p className="text-gray-500 text-xs">
+                                        Query executed successfully. No rows
+                                        returned.
+                                      </p>
+                                    )}
+                                  </div>
                                 )}
                               </div>
                             )}
-                          </div>
-                        )}
+                          {/* NEW: Mobile Test Query Output */}
+                          {showTestOutput && (testResult || testError) && (
+                            <div className="bg-white rounded-lg shadow-sm p-4 mt-3">
+                              <div className="flex items-center justify-between mb-3">
+                                <h3 className="font-semibold text-gray-900 text-sm">Test Results</h3>
+                                <button
+                                  onClick={() => {
+                                    setShowTestOutput(false);
+                                    setTestResult(null);
+                                    setTestError('');
+                                  }}
+                                  // className="text-gray-400 hover:text-gray-600"
+                                  className="p-2 rounded-lg bg-gray-100 hover:bg-gray-100 transition"
+                                  title="Close test results"
+                                >
+                                  <X className="w-4 h-4" />
+                                </button>
+                              </div>
+
+                              {testError && (
+                                <div className="border p-3 rounded-lg mb-3 border-orange-200 bg-orange-50 text-orange-800 text-xs">
+                                  <strong>Error:</strong> {testError}
+                                </div>
+                              )}
+
+                              {testResult && (
+                                <div>
+                                  <h4 className="font-semibold mb-2 text-xs text-gray-900">Query Output:</h4>
+                                  {testResult.values && testResult.values.length > 0 ? (
+                                    renderTable(testResult)
+                                  ) : (
+                                    <p className="text-gray-500 text-xs">Query executed successfully. No rows returned.</p>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          )}
                         </>
                       ) : (
                         <div className="bg-white rounded-lg shadow-sm p-6">
