@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-
 import {
   Play,
   CheckCircle,
@@ -25,7 +24,6 @@ import {
   Flame,
   Home
 } from "lucide-react";
-
 const SQLPracticePlatform = ({ onNavigate }) => {
   const [SQL, setSQL] = useState(null);
   const [PGlite, setPGlite] = useState(null);
@@ -54,7 +52,6 @@ const SQLPracticePlatform = ({ onNavigate }) => {
   const [isDragging, setIsDragging] = useState(false);
   const [mobileActiveTab, setMobileActiveTab] = useState("question");
   const [showMobileQuestionsList, setShowMobileQuestionsList] = useState(false);
-
   const [completedQuestions, setCompletedQuestions] = useState(new Set());
   const [questions, setQuestions] = useState([]);
   const [questionsLoaded, setQuestionsLoaded] = useState(0);
@@ -66,10 +63,11 @@ const [testCaseResults, setTestCaseResults] = useState([]);
 const [showTestCases, setShowTestCases] = useState(false);
   const { questionId } = useParams(); // Get question ID from URL
   const navigate = useNavigate(); // For programmatic navigation
-  
-
   const containerRef = useRef(null);
-
+  // NEW STATES
+  const [testResult, setTestResult] = useState(null);
+  const [testError, setTestError] = useState('');
+  const [showTestOutput, setShowTestOutput] = useState(false);
   // Mobile detection
   useEffect(() => {
     const checkMobile = () => {
@@ -81,28 +79,23 @@ const [showTestCases, setShowTestCases] = useState(false);
       const isSmallScreen = window.innerWidth <= 768;
       const wasMobile = isMobile;
       setIsMobile(isMobileDevice || isSmallScreen);
-
       // Show warning only on first detection and if not already continued
       if ((isMobileDevice || isSmallScreen) && !wasMobile && !mobileContinue) {
         setShowMobileWarning(true);
       }
-
       // Auto-collapse questions panel on mobile
       if (isMobileDevice || isSmallScreen) {
         setIsQuestionsPanelCollapsed(true);
       }
     };
-
     checkMobile();
     window.addEventListener("resize", checkMobile);
     return () => window.removeEventListener("resize", checkMobile);
   }, [mobileContinue, isMobile]);
-
   const getTodayDate = () => {
     const today = new Date();
     return today.toISOString().split("T")[0];
   };
-
   // Utility function to check if two dates are consecutive days
   const isConsecutiveDay = (date1, date2) => {
     const d1 = new Date(date1);
@@ -111,35 +104,28 @@ const [showTestCases, setShowTestCases] = useState(false);
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     return diffDays === 1;
   };
-
   // Load streak data from IndexedDB
   // const loadStreakData = async () => {
   //   try {
   //     const dbName = "SQLPlatformDB";
   //     const storeName = "streakData";
-
   //     const request = indexedDB.open(dbName, 2); // Increment version
-
   //     request.onerror = () => {
   //       console.error("Failed to open IndexedDB for streak");
   //     };
-
   //     request.onsuccess = (event) => {
   //       const db = event.target.result;
   //       if (!db.objectStoreNames.contains(storeName)) {
   //         return;
   //       }
-
   //       const transaction = db.transaction([storeName], "readonly");
   //       const objectStore = transaction.objectStore(storeName);
   //       const getRequest = objectStore.get("streak");
-
   //       getRequest.onsuccess = () => {
   //         const data = getRequest.result;
   //         if (data) {
   //           const today = getTodayDate();
   //           const lastSolved = data.lastSolvedDate;
-
   //           // If last solved was today or yesterday, keep the streak
   //           if (lastSolved === today || isConsecutiveDay(lastSolved, today)) {
   //             setCurrentStreak(data.currentStreak || 0);
@@ -151,7 +137,6 @@ const [showTestCases, setShowTestCases] = useState(false);
   //         }
   //       };
   //     };
-
   //     request.onupgradeneeded = (event) => {
   //       const db = event.target.result;
   //       if (!db.objectStoreNames.contains(storeName)) {
@@ -162,35 +147,27 @@ const [showTestCases, setShowTestCases] = useState(false);
   //     console.error("Error loading streak data:", err);
   //   }
   // };
-
-
   const loadStreakData = async () => {
   try {
     const dbName = "SQLPlatformDB";
     const storeName = "streakData";
-
     const request = indexedDB.open(dbName, 3); // Use version 3
-
     request.onerror = (event) => {
       console.error("Failed to open IndexedDB for streak:", event.target.error);
     };
-
     request.onsuccess = (event) => {
       const db = event.target.result;
       if (!db.objectStoreNames.contains(storeName)) {
         return;
       }
-
       const transaction = db.transaction([storeName], "readonly");
       const objectStore = transaction.objectStore(storeName);
       const getRequest = objectStore.get("streak");
-
       getRequest.onsuccess = () => {
         const data = getRequest.result;
         if (data) {
           const today = getTodayDate();
           const lastSolved = data.lastSolvedDate;
-
           if (lastSolved === today || isConsecutiveDay(lastSolved, today)) {
             setCurrentStreak(data.currentStreak || 0);
           } else {
@@ -200,7 +177,6 @@ const [showTestCases, setShowTestCases] = useState(false);
         }
       };
     };
-
     request.onupgradeneeded = (event) => {
       const db = event.target.result;
       if (!db.objectStoreNames.contains(storeName)) {
@@ -214,26 +190,21 @@ const [showTestCases, setShowTestCases] = useState(false);
     console.error("Error loading streak data:", err);
   }
 };
-
   // Save streak data to IndexedDB
   // const saveStreakData = async (streakData) => {
   //   try {
   //     const dbName = "SQLPlatformDB";
   //     const storeName = "streakData";
-
   //     const request = indexedDB.open(dbName, 2); // Increment version
-
   //     request.onsuccess = (event) => {
   //       const db = event.target.result;
   //       const transaction = db.transaction([storeName], "readwrite");
   //       const objectStore = transaction.objectStore(storeName);
-
   //       objectStore.put({
   //         id: "streak",
   //         ...streakData,
   //       });
   //     };
-
   //     request.onupgradeneeded = (event) => {
   //       const db = event.target.result;
   //       if (!db.objectStoreNames.contains(storeName)) {
@@ -244,32 +215,24 @@ const [showTestCases, setShowTestCases] = useState(false);
   //     console.error("Error saving streak data:", err);
   //   }
   // };
-
-
   const saveStreakData = async (streakData) => {
   try {
     const dbName = "SQLPlatformDB";
     const storeName = "streakData";
-
     const request = indexedDB.open(dbName, 3); // Use version 3
-
     request.onerror = (event) => {
       console.error("Failed to save streak:", event.target.error);
     };
-
     request.onsuccess = (event) => {
       const db = event.target.result;
       const transaction = db.transaction([storeName], "readwrite");
       const objectStore = transaction.objectStore(storeName);
-
       objectStore.put({
         id: "streak",
         ...streakData,
       });
-
       console.log("Saved streak data:", streakData);
     };
-
     request.onupgradeneeded = (event) => {
       const db = event.target.result;
       if (!db.objectStoreNames.contains(storeName)) {
@@ -283,31 +246,24 @@ const [showTestCases, setShowTestCases] = useState(false);
     console.error("Error saving streak data:", err);
   }
 };
-
   // Update streak when a question is completed
   const updateStreak = async () => {
     const today = getTodayDate();
-
     try {
       const dbName = "SQLPlatformDB";
       const storeName = "streakData";
-
       const request = indexedDB.open(dbName, 3);
-
       request.onsuccess = (event) => {
         const db = event.target.result;
         const transaction = db.transaction([storeName], "readonly");
         const objectStore = transaction.objectStore(storeName);
         const getRequest = objectStore.get("streak");
-
         getRequest.onsuccess = () => {
           const data = getRequest.result;
           let newStreak = 1;
           let newLongest = longestStreak;
-
           if (data) {
             const lastSolved = data.lastSolvedDate;
-
             if (lastSolved === today) {
               // Already solved today, no change
               return;
@@ -319,21 +275,17 @@ const [showTestCases, setShowTestCases] = useState(false);
               newStreak = 1;
             }
           }
-
           // Update longest streak if needed
           if (newStreak > newLongest) {
             newLongest = newStreak;
           }
-
           // Show celebration if streak increased
           if (newStreak > currentStreak) {
             setShowStreakCelebration(true);
             setTimeout(() => setShowStreakCelebration(false), 2000);
           }
-
           setCurrentStreak(newStreak);
           setLongestStreak(newLongest);
-
           saveStreakData({
             lastSolvedDate: today,
             currentStreak: newStreak,
@@ -345,33 +297,25 @@ const [showTestCases, setShowTestCases] = useState(false);
       console.error("Error updating streak:", err);
     }
   };
-
-
   // Load completed questions from IndexedDB on mount
 useEffect(() => {
   const loadCompletedQuestions = async () => {
     try {
       const dbName = "SQLPlatformDB";
       const storeName = "completedQuestions";
-
       const request = indexedDB.open(dbName, 3); // Use version 3
-
       request.onerror = (event) => {
         console.error("Failed to open IndexedDB:", event.target.error);
       };
-
       request.onsuccess = (event) => {
         const db = event.target.result;
-        
         if (!db.objectStoreNames.contains(storeName)) {
           console.warn("Store does not exist yet");
           return;
         }
-
         const transaction = db.transaction([storeName], "readonly");
         const objectStore = transaction.objectStore(storeName);
         const getAllRequest = objectStore.getAll();
-
         getAllRequest.onsuccess = () => {
           const completedIds = getAllRequest.result.map((item) => item.id);
           if (completedIds.length > 0) {
@@ -379,21 +323,17 @@ useEffect(() => {
             console.log("Loaded completed questions:", completedIds);
           }
         };
-
         getAllRequest.onerror = (event) => {
           console.error("Error getting completed questions:", event.target.error);
         };
       };
-
       request.onupgradeneeded = (event) => {
         const db = event.target.result;
-        
         // Create completedQuestions store if it doesn't exist
         if (!db.objectStoreNames.contains(storeName)) {
           db.createObjectStore(storeName, { keyPath: "id" });
           console.log("Created completedQuestions store");
         }
-        
         // Create streakData store if it doesn't exist
         if (!db.objectStoreNames.contains("streakData")) {
           db.createObjectStore("streakData", { keyPath: "id" });
@@ -404,32 +344,25 @@ useEffect(() => {
       console.error("Error loading completed questions:", err);
     }
   };
-
   loadCompletedQuestions();
 }, []);
-
   // Save completed questions to IndexedDB whenever they change
   // useEffect(() => {
   //   const saveCompletedQuestions = async () => {
   //     if (completedQuestions.size === 0) return;
-
   //     try {
   //       const dbName = "SQLPlatformDB";
   //       const storeName = "completedQuestions";
-
   //       const request = indexedDB.open(dbName, 1);
-
   //       request.onsuccess = (event) => {
   //         const db = event.target.result;
   //         const transaction = db.transaction([storeName], "readwrite");
   //         const objectStore = transaction.objectStore(storeName);
-
   //         objectStore.clear();
   //         Array.from(completedQuestions).forEach((id) => {
   //           objectStore.add({ id: id });
   //         });
   //       };
-
   //       request.onupgradeneeded = (event) => {
   //         const db = event.target.result;
   //         if (!db.objectStoreNames.contains(storeName)) {
@@ -440,56 +373,42 @@ useEffect(() => {
   //       console.error("Error saving completed questions:", err);
   //     }
   //   };
-
   //   saveCompletedQuestions();
   // }, [completedQuestions]);
-
-
   // Save completed questions to IndexedDB whenever they change
 useEffect(() => {
   const saveCompletedQuestions = async () => {
     if (completedQuestions.size === 0) return;
-
     try {
       const dbName = "SQLPlatformDB";
       const storeName = "completedQuestions";
-
       const request = indexedDB.open(dbName, 3); // Use version 3
-
       request.onerror = (event) => {
         console.error("Failed to open IndexedDB for saving:", event.target.error);
       };
-
       request.onsuccess = (event) => {
         const db = event.target.result;
-        
         if (!db.objectStoreNames.contains(storeName)) {
           console.warn("Store does not exist, cannot save");
           return;
         }
-
         const transaction = db.transaction([storeName], "readwrite");
         const objectStore = transaction.objectStore(storeName);
-
         // Clear and re-add all completed questions
         const clearRequest = objectStore.clear();
-        
         clearRequest.onsuccess = () => {
           Array.from(completedQuestions).forEach((id) => {
             objectStore.add({ id: id });
           });
           console.log("Saved completed questions:", Array.from(completedQuestions));
         };
-
         clearRequest.onerror = (event) => {
           console.error("Error clearing store:", event.target.error);
         };
-
         transaction.onerror = (event) => {
           console.error("Transaction error:", event.target.error);
         };
       };
-
       request.onupgradeneeded = (event) => {
         const db = event.target.result;
         if (!db.objectStoreNames.contains(storeName)) {
@@ -503,16 +422,12 @@ useEffect(() => {
       console.error("Error saving completed questions:", err);
     }
   };
-
   saveCompletedQuestions();
 }, [completedQuestions]);
-
   // Load streak data on mount
   useEffect(() => {
     loadStreakData();
   }, []);
-
-
   // Add custom scrollbar styles
   useEffect(() => {
     const style = document.createElement("style");
@@ -520,33 +435,26 @@ useEffect(() => {
       .hide-scrollbar::-webkit-scrollbar {
         display: none;
       }
-      
       .hide-scrollbar {
         -ms-overflow-style: none;
         scrollbar-width: none;
       }
-      
       body {
         overflow: hidden;
       }
-
       .resizer {
         cursor: col-resize;
         user-select: none;
       }
-
       .resizer:hover {
         background: rgba(59, 130, 246, 0.3);
       }
-
       .resizer.dragging {
         background: rgba(59, 130, 246, 0.5);
       }
-
       .skeleton {
         animation: skeleton-loading 1s linear infinite alternate;
       }
-
       @keyframes skeleton-loading {
         0% {
           background-color: hsl(200, 20%, 80%);
@@ -555,7 +463,6 @@ useEffect(() => {
           background-color: hsl(200, 20%, 95%);
         }
       }
-
       @media (max-width: 768px) {
         .resizer {
           display: none;
@@ -565,35 +472,28 @@ useEffect(() => {
     document.head.appendChild(style);
     return () => document.head.removeChild(style);
   }, []);
-
   // Handle mouse move for resizing (desktop only)
   useEffect(() => {
     if (isMobile) return;
-
     const handleMouseMove = (e) => {
       if (!isDragging || !containerRef.current) return;
-
       const container = containerRef.current;
       const containerRect = container.getBoundingClientRect();
       const newWidth =
         ((e.clientX - containerRect.left) / containerRect.width) * 100;
-
       if (newWidth >= 30 && newWidth <= 70) {
         setLeftPanelWidth(newWidth);
       }
     };
-
     const handleMouseUp = () => {
       setIsDragging(false);
     };
-
     if (isDragging) {
       document.addEventListener("mousemove", handleMouseMove);
       document.addEventListener("mouseup", handleMouseUp);
       document.body.style.cursor = "col-resize";
       document.body.style.userSelect = "none";
     }
-
     return () => {
       document.removeEventListener("mousemove", handleMouseMove);
       document.removeEventListener("mouseup", handleMouseUp);
@@ -601,8 +501,6 @@ useEffect(() => {
       document.body.style.userSelect = "";
     };
   }, [isDragging, isMobile]);
-
-
   useEffect(() => {
     if (questions.length > 0 && questionId) {
       const index = questions.findIndex(q => q.id === questionId);
@@ -617,7 +515,6 @@ useEffect(() => {
       navigate(`/practice/${questions[0].id}`, { replace: true });
     }
   }, [questionId, questions, navigate]);
-
   // NEW: Update URL when question changes
   useEffect(() => {
     if (questions.length > 0 && questions[currentQuestion]) {
@@ -627,60 +524,44 @@ useEffect(() => {
       }
     }
   }, [currentQuestion, questions, navigate, questionId]);
-
-
-
-
   const GITHUB_REPO = "sqlunlimited/sql_questions";
   const GITHUB_BRANCH = "main";
   const QUESTIONS_FOLDER = "questions";
-
   const loadQuestionsFromGitHub = async () => {
     setLoadingQuestions(true);
     setQuestions([]);
     setQuestionsLoaded(0);
     setTotalQuestions(0);
-
     try {
       const treeUrl = `https://api.github.com/repos/${GITHUB_REPO}/git/trees/${GITHUB_BRANCH}?recursive=1`;
       const treeResponse = await fetch(treeUrl);
-
       if (!treeResponse.ok) {
         throw new Error("Failed to fetch repository tree");
       }
-
       const treeData = await treeResponse.json();
-
       const questionFiles = treeData.tree.filter(
         (item) =>
           item.path.startsWith(QUESTIONS_FOLDER) &&
           item.path.endsWith(".json") &&
           item.type === "blob"
       );
-
       setTotalQuestions(questionFiles.length);
-
       const loadPromises = questionFiles.map(async (file) => {
         try {
           const cdnUrl = `https://cdn.jsdelivr.net/gh/${GITHUB_REPO}@${GITHUB_BRANCH}/${file.path}`;
           const fileResponse = await fetch(cdnUrl);
-
           if (!fileResponse.ok) {
             throw new Error(`Failed to fetch ${file.path}`);
           }
-
           const questionData = await fileResponse.json();
           const fileName = file.path.split("/").pop();
           const persistentId = fileName.replace(".json", "");
-
           const newQuestion = {
             ...questionData,
             id: persistentId,
             filename: fileName,
           };
-
           setQuestionsLoaded((prev) => prev + 1);
-
           return newQuestion;
         } catch (err) {
           console.error(`Error loading ${file.path}:`, err);
@@ -688,10 +569,8 @@ useEffect(() => {
           return null;
         }
       });
-
       const loadedQuestions = await Promise.all(loadPromises);
       const validQuestions = loadedQuestions.filter((q) => q !== null);
-
       const sortedQuestions = validQuestions.sort((a, b) =>
         a.id.localeCompare(b.id)
       );
@@ -703,7 +582,6 @@ useEffect(() => {
       setLoadingQuestions(false);
     }
   };
-
   // Load SQL.js and PGlite
   useEffect(() => {
     const loadEngines = async () => {
@@ -712,7 +590,6 @@ useEffect(() => {
         sqlScript.src =
           "https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/sql-wasm.js";
         sqlScript.async = true;
-
         sqlScript.onload = async () => {
           const initSqlJs = window.initSqlJs;
           if (initSqlJs) {
@@ -723,13 +600,10 @@ useEffect(() => {
             setSQL(SQLEngine);
           }
         };
-
         sqlScript.onerror = () => {
           setError("Failed to load SQL.js library");
         };
-
         document.head.appendChild(sqlScript);
-
         try {
           const module = await import(
             "https://cdn.jsdelivr.net/npm/@electric-sql/pglite/dist/index.js"
@@ -738,7 +612,6 @@ useEffect(() => {
         } catch (err) {
           console.warn("PGlite not available:", err);
         }
-
         setLoading(false);
       } catch (err) {
         setError("Error initializing database engines: " + err.message);
@@ -747,22 +620,18 @@ useEffect(() => {
     };
     loadEngines();
   }, []);
-
   const hasLoadedRef = useRef(false);
-
   useEffect(() => {
     if (!hasLoadedRef.current) {
       hasLoadedRef.current = true;
       loadQuestionsFromGitHub();
     }
   }, []);
-
   // Initialize database with current question's schema
   useEffect(() => {
     const initializeDatabases = async () => {
       if (questions.length > 0 && questions[currentQuestion]) {
         const schema = questions[currentQuestion].schema;
-
         if (SQL) {
           try {
             const newDb = new SQL.Database();
@@ -772,7 +641,6 @@ useEffect(() => {
             console.error("Error loading SQLite schema:", err);
           }
         }
-
         if (PGlite) {
           try {
             if (pgDb) {
@@ -782,7 +650,6 @@ useEffect(() => {
                 // Ignore close errors
               }
             }
-
             const newPgDb = await PGlite.create();
             await newPgDb.exec(schema);
             setPgDb(newPgDb);
@@ -790,18 +657,19 @@ useEffect(() => {
             console.error("Error loading PGlite schema:", err);
           }
         }
-
         setUserQuery("");
         setResult(null);
         setError("");
         setIsCorrect(null);
         setShowOutput(false);
+        // NEW: Clear test states
+        setTestResult(null);
+        setTestError('');
+        setShowTestOutput(false);
       }
     };
-
     initializeDatabases();
   }, [SQL, PGlite, currentQuestion, questions]);
-
   // Reset current question when filter changes if current question is not in filtered list
   useEffect(() => {
     if (
@@ -823,7 +691,6 @@ useEffect(() => {
       }
     }
   }, [difficultyFilter, searchQuery, questions.length]);
-
   const normalizeResult = (result) => {
     if (!result || result.length === 0) return null;
     return {
@@ -835,7 +702,6 @@ useEffect(() => {
       ),
     };
   };
-
   const normalizePGResult = (result) => {
     if (!result || !result.rows || result.rows.length === 0) {
       return {
@@ -843,7 +709,6 @@ useEffect(() => {
         values: [],
       };
     }
-
     const columns = result.fields.map((f) => f.name.toLowerCase());
     const values = result.rows.map((row) =>
       columns.map((col) => {
@@ -853,34 +718,79 @@ useEffect(() => {
           : value;
       })
     );
-
     return { columns, values };
   };
+  // NEW: Test Query Function
+  const testQuery = async () => {
+    if (!userQuery.trim()) {
+      setTestError('Please enter a query');
+      return;
+    }
 
+      // ADD THESE LINES TO CLEAR CHECK SOLUTION OUTPUT
+  setShowOutput(false);
+  setResult(null);
+  setError('');
+  setIsCorrect(null);
+  setShowTestCases(false);
+  setTestCaseResults([]);
+  // END OF NEW LINES
+
+
+    if (selectedEngine === 'SQLite' && !db) {
+      setTestError('SQLite database not initialized');
+      return;
+    }
+
+    if (selectedEngine === 'PostgreSQL' && !pgDb) {
+      setTestError('PostgreSQL database not initialized');
+      return;
+    }
+
+    try {
+      setTestError('');
+      setShowTestOutput(true);
+      
+      let resultData;
+
+      if (selectedEngine === 'SQLite') {
+        const queryResult = db.exec(userQuery);
+        resultData = queryResult.length > 0 ? queryResult[0] : { columns: [], values: [] };
+      } else {
+        const queryResult = await pgDb.query(userQuery);
+        resultData = {
+          columns: queryResult.fields?.map(f => f.name) || [],
+          values: queryResult.rows?.map(row => 
+            queryResult.fields.map(f => row[f.name])
+          ) || []
+        };
+      }
+      
+      setTestResult(resultData);
+    } catch (err) {
+      setTestError(err.message);
+      setTestResult(null);
+    }
+  };
 
   // const executeQuery = async () => {
   //   if (!userQuery.trim()) {
   //     setError("Please enter a query");
   //     return;
   //   }
-
   //   if (selectedEngine === "SQLite" && !db) {
   //     setError("SQLite database not initialized");
   //     return;
   //   }
-
   //   if (selectedEngine === "PostgreSQL" && !pgDb) {
   //     setError("PostgreSQL database not initialized");
   //     return;
   //   }
-
   //   try {
   //     setError("");
   //     setShowOutput(true);
-
   //     let normalizedUser;
   //     let resultData;
-
   //     if (selectedEngine === "SQLite") {
   //       const userResult = db.exec(userQuery);
   //       normalizedUser = normalizeResult(userResult);
@@ -897,9 +807,7 @@ useEffect(() => {
   //           ) || [],
   //       };
   //     }
-
   //     const expected = questions[currentQuestion].expectedResult;
-
   //     const normalizedExpected = {
   //       columns: expected.columns.map((c) => c.toLowerCase()),
   //       values: expected.values.map((row) =>
@@ -908,17 +816,14 @@ useEffect(() => {
   //         )
   //       ),
   //     };
-
   //     const matches =
   //       normalizedUser &&
   //       JSON.stringify(normalizedUser.columns.sort()) ===
   //         JSON.stringify(normalizedExpected.columns.sort()) &&
   //       JSON.stringify(normalizedUser.values.sort()) ===
   //         JSON.stringify(normalizedExpected.values.sort());
-
   //     setIsCorrect(matches);
   //     setResult(resultData);
-
   //     // if (matches) {
   //     //   const currentQuestionId = questions[currentQuestion]?.id;
   //     //   if (currentQuestionId !== undefined) {
@@ -952,45 +857,37 @@ useEffect(() => {
   //     setShowOutput(true);
   //   }
   // };
-
-
-
-
   const executeQuery = async () => {
   if (!userQuery.trim()) {
     setError("Please enter a query");
     return;
   }
-
   if (selectedEngine === "SQLite" && !db) {
     setError("SQLite database not initialized");
     return;
   }
-
   if (selectedEngine === "PostgreSQL" && !pgDb) {
     setError("PostgreSQL database not initialized");
     return;
   }
-
   try {
+        setShowTestOutput(false);
+    setTestResult(null);
+    setTestError('');
+
     setError("");
     setShowOutput(true);
-
     const currentQ = questions[currentQuestion];
-    
     // Check if question uses new test case format or old format
     const hasTestCases = currentQ.testCases && currentQ.testCases.length > 0;
-    
     if (hasTestCases) {
       // NEW FORMAT: Run all test cases
       const results = [];
       let allPassed = true;
-
       for (const testCase of currentQ.testCases) {
         try {
           // Create a fresh database for this test case
           let testDb, normalizedUser, resultData;
-
           if (selectedEngine === "SQLite") {
             testDb = new SQL.Database();
             testDb.exec(testCase.schema);
@@ -1010,7 +907,6 @@ useEffect(() => {
             };
             await testDb.close();
           }
-
           const expected = testCase.expectedResult;
           const normalizedExpected = {
             columns: expected.columns.map((c) => c.toLowerCase()),
@@ -1020,14 +916,12 @@ useEffect(() => {
               )
             ),
           };
-
           const matches =
             normalizedUser &&
             JSON.stringify(normalizedUser.columns.sort()) ===
               JSON.stringify(normalizedExpected.columns.sort()) &&
             JSON.stringify(normalizedUser.values.sort()) ===
               JSON.stringify(normalizedExpected.values.sort());
-
           results.push({
             name: testCase.name,
             visible: testCase.visible,
@@ -1035,7 +929,6 @@ useEffect(() => {
             output: resultData,
             expected: expected,
           });
-
           if (!matches) allPassed = false;
         } catch (err) {
           results.push({
@@ -1047,12 +940,10 @@ useEffect(() => {
           allPassed = false;
         }
       }
-
       setTestCaseResults(results);
       setIsCorrect(allPassed);
       setResult(results[0]?.output || null); // Show first test case output
       setShowTestCases(true);
-
       // Mark as completed if all test cases passed
       if (allPassed) {
         const currentQuestionId = questions[currentQuestion]?.id;
@@ -1070,7 +961,6 @@ useEffect(() => {
     } else {
       // OLD FORMAT: Use existing logic with expectedResult
       let normalizedUser, resultData;
-
       if (selectedEngine === "SQLite") {
         const userResult = db.exec(userQuery);
         normalizedUser = normalizeResult(userResult);
@@ -1085,7 +975,6 @@ useEffect(() => {
           ) || [],
         };
       }
-
       const expected = currentQ.expectedResult;
       const normalizedExpected = {
         columns: expected.columns.map((c) => c.toLowerCase()),
@@ -1095,18 +984,15 @@ useEffect(() => {
           )
         ),
       };
-
       const matches =
         normalizedUser &&
         JSON.stringify(normalizedUser.columns.sort()) ===
           JSON.stringify(normalizedExpected.columns.sort()) &&
         JSON.stringify(normalizedUser.values.sort()) ===
           JSON.stringify(normalizedExpected.values.sort());
-
       setIsCorrect(matches);
       setResult(resultData);
       setShowTestCases(false);
-
       if (matches) {
         const currentQuestionId = questions[currentQuestion]?.id;
         if (currentQuestionId !== undefined) {
@@ -1129,6 +1015,57 @@ useEffect(() => {
     setShowTestCases(false);
   }
 };
+  // NEW: Share to LinkedIn Function
+//   const shareToLinkedIn = () => {
+//     if (!activeQuestion || !isCorrect) return;
+    
+//     const questionTitle = activeQuestion.title;
+//     const questionId = activeQuestion.id;
+//     const difficulty = activeQuestion.difficulty;
+//     const questionUrl = `${window.location.origin}/practice/${questionId}`;
+    
+//     const shareText = `🎉 Just solved "${questionTitle}" on SQL Unlimited!
+
+// 📊 Difficulty: ${difficulty}
+// 💻 Platform: SQL Unlimited - Interactive SQL Practice
+// 🔗 Try it yourself: ${questionUrl}
+
+// #SQL #DataScience #Learning #SQLUnlimited #CodingChallenge`;
+
+//     const linkedInUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(questionUrl)}&summary=${encodeURIComponent(shareText)}`;
+    
+//     window.open(linkedInUrl, '_blank', 'width=600,height=600');
+//   };
+
+
+
+
+
+const shareToLinkedIn = () => {
+  if (!activeQuestion || !isCorrect) return;
+  
+  const questionTitle = activeQuestion.title;
+  const questionId = activeQuestion.id;
+  const difficulty = activeQuestion.difficulty;
+  const questionUrl = `${window.location.origin}/practice/${questionId}`;
+  
+  const shareText = `🎉 Just solved "${questionTitle}" on SQL Unlimited!
+
+📊 Difficulty: ${difficulty}
+💻 Platform: SQL Unlimited - Interactive SQL Practice
+🔗 Try it yourself: ${questionUrl}
+
+#SQL #DataScience #Learning #SQLUnlimited #CodingChallenge`;
+
+  // Use the LinkedIn share URL with text parameter
+  const linkedInUrl = `https://www.linkedin.com/feed/?shareActive=true&text=${encodeURIComponent(shareText)}`;
+  
+  window.open(linkedInUrl, '_blank', 'width=600,height=600');
+};
+
+
+
+
 
 
   const difficultyColor = (difficulty) => {
@@ -1143,22 +1080,18 @@ useEffect(() => {
         return "text-gray-600 bg-gray-100";
     }
   };
-
   const getQuestionButtonColor = (q, isActive) => {
     if (completedQuestions.has(q.id)) {
       return isActive
         ? "bg-green-500 border-green-600 ring-4 ring-green-400 scale-110 shadow-lg"
         : "bg-green-500 border-green-600 hover:scale-105 shadow";
     }
-
     return isActive
       ? "bg-gray-400 border-gray-500 ring-4 ring-blue-400 scale-110 shadow-lg"
       : "bg-gray-400 border-gray-500 hover:scale-105 shadow";
   };
-
   const renderTable = (data) => {
     if (!data || !data.columns || data.columns.length === 0) return null;
-
     return (
       <div className="overflow-x-auto">
         <table className="min-w-full border text-sm border-gray-300">
@@ -1192,7 +1125,6 @@ useEffect(() => {
       </div>
     );
   };
-
   const filteredQuestions = questions.filter((q) => {
     const matchesDifficulty =
       difficultyFilter === "All" || q.difficulty === difficultyFilter;
@@ -1203,22 +1135,17 @@ useEffect(() => {
       q.id.toString().includes(searchQuery);
     return matchesDifficulty && matchesSearch;
   });
-
   const getCurrentQuestion = () => {
     if (questions.length === 0) return null;
     if (filteredQuestions.length === 0) return questions[0];
-
     const currentQ = questions[currentQuestion];
     const isInFiltered = filteredQuestions.find((q) => q.id === currentQ?.id);
-
     if (isInFiltered) {
       return currentQ;
     }
     return filteredQuestions[0];
   };
-
   const activeQuestion = getCurrentQuestion();
-
   // Mobile warning popup
   if (showMobileWarning && !mobileContinue) {
     return (
@@ -1257,7 +1184,6 @@ useEffect(() => {
       </div>
     );
   }
-
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen w-screen bg-gray-50 overflow-hidden">
@@ -1268,10 +1194,8 @@ useEffect(() => {
       </div>
     );
   }
-
   const isInitialLoad = loadingQuestions && questions.length === 0;
   const hasPartialQuestions = questions.length > 0 && loadingQuestions;
-
   if (isInitialLoad) {
     return (
       <div className="flex items-center justify-center h-screen w-screen bg-gray-50 overflow-hidden">
@@ -1289,7 +1213,6 @@ useEffect(() => {
       </div>
     );
   }
-
   return (
     <div className="h-screen w-screen bg-gray-50 text-gray-900 flex flex-col overflow-hidden">
       {/* About Modal */}
@@ -1393,7 +1316,6 @@ useEffect(() => {
                 <X className="w-5 h-5" />
               </button>
             </div>
-
             <div className="p-4 space-y-3 flex-shrink-0">
               <div>
                 <label className="text-xs font-medium mb-2 block text-gray-600">
@@ -1408,7 +1330,6 @@ useEffect(() => {
                   className="w-full px-3 py-2 rounded-lg text-sm bg-gray-50 text-gray-900 border-gray-300 border focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
-
               <div>
                 <label className="text-xs font-medium mb-2 block text-gray-600">
                   <Filter className="w-3 h-3 inline mr-1" />
@@ -1426,7 +1347,6 @@ useEffect(() => {
                 </select>
               </div>
             </div>
-
             <div className="flex-1 overflow-y-auto p-4 space-y-2">
               {filteredQuestions.length > 0 ? (
                 filteredQuestions.map((q) => {
@@ -1435,7 +1355,6 @@ useEffect(() => {
                   );
                   const isCompleted = completedQuestions.has(q.id);
                   const isActive = currentQuestion === actualIndex;
-
                   return (
                     <button
                       key={q.id}
@@ -1489,7 +1408,6 @@ useEffect(() => {
           </div>
         </div>
       )}
-
       {/* Header */}
       <div className="bg-white border-b shadow-sm border-gray-200 flex-shrink-0">
         <div className="px-3 md:px-4 py-2 md:py-3">
@@ -1533,7 +1451,6 @@ useEffect(() => {
                 <Info className="w-3 h-3 md:w-4 md:h-4" />
                 <span className="hidden sm:inline">About</span>
               </button> */}
-
               {/* <button
   onClick={() => onNavigate('landing')}
   className="flex items-center gap-1 px-2 md:px-4 py-1.5 md:py-2 bg-blue-600 text-white hover:bg-blue-700 rounded-lg transition text-xs md:text-sm"
@@ -1541,8 +1458,6 @@ useEffect(() => {
   <Home className="w-3 h-3 md:w-4 md:h-4" />
   <span className="hidden sm:inline">Home</span>
 </button> */}
-
-
 <button
   onClick={() => navigate('/')}
   className="flex items-center gap-1 px-2 md:px-4 py-1.5 md:py-2 bg-blue-600 text-white hover:bg-blue-700 rounded-lg transition text-xs md:text-sm"
@@ -1550,7 +1465,6 @@ useEffect(() => {
   <Home className="w-3 h-3 md:w-4 md:h-4" />
   <span className="hidden sm:inline">Home</span>
 </button>
-              
               <button
                 onClick={() =>
                   window.open(`https://github.com/${GITHUB_REPO}`, "_blank")
@@ -1560,13 +1474,10 @@ useEffect(() => {
                 <Github className="w-3 h-3 md:w-4 md:h-4" />
                 <span className="hidden md:inline">Contribute</span>
               </button>
-              
-
             </div>
           </div>
         </div>
       </div>
-
       <div className="flex-1 overflow-hidden">
         <div className="h-full flex" ref={containerRef}>
           {/* Desktop Questions List */}
@@ -1632,7 +1543,6 @@ useEffect(() => {
                       <ChevronLeft className="w-5 h-5" />
                     </button>
                   </div>
-
                   <div className="mb-3 flex-shrink-0">
                     <label className="text-xs font-medium mb-2 block text-gray-600">
                       <Search className="w-3 h-3 inline mr-1" />
@@ -1646,7 +1556,6 @@ useEffect(() => {
                       className="w-full px-3 py-2 rounded-lg text-sm bg-gray-50 text-gray-900 border-gray-300 border focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
-
                   <div className="mb-4 flex-shrink-0">
                     <label className="text-xs font-medium mb-2 block text-gray-600">
                       <Filter className="w-3 h-3 inline mr-1" />
@@ -1663,7 +1572,6 @@ useEffect(() => {
                       <option value="Hard">Hard</option>
                     </select>
                   </div>
-
                   <div className="space-y-2 overflow-y-auto text-gray-900 flex-1 min-h-0 hide-scrollbar">
                     {filteredQuestions.length > 0 ? (
                       filteredQuestions.map((q) => {
@@ -1672,7 +1580,6 @@ useEffect(() => {
                         );
                         const isCompleted = completedQuestions.has(q.id);
                         const isActive = currentQuestion === actualIndex;
-
                         return (
                           <button
                             key={q.id}
@@ -1724,7 +1631,6 @@ useEffect(() => {
               )}
             </div>
           )}
-
           {/* Main Content Area */}
           <div className="flex-1 flex overflow-hidden">
             {/* Desktop Layout - Resizable Panels */}
@@ -1744,8 +1650,6 @@ useEffect(() => {
                               {activeQuestion.title}
                             </h2>
                             <div className="flex gap-1">
-
-
                               <button
                                 onClick={() => {
                                   navigator.clipboard.writeText(window.location.href).then(() => {
@@ -1757,7 +1661,6 @@ useEffect(() => {
                               >
                                 <Upload className="w-4 h-4" />
                               </button>
-
                               {completedQuestions.has(activeQuestion.id) && (
                                 <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 flex items-center">
                                   ✓ Completed
@@ -1780,7 +1683,6 @@ useEffect(() => {
                               <strong>Hint:</strong> {activeQuestion.hint}
                             </p>
                           </div>
-
                           {activeQuestion.contributor && (
                             <div className="mt-4 pt-4 border-t border-gray-200">
                               <a
@@ -1795,7 +1697,6 @@ useEffect(() => {
                             </div>
                           )}
                         </div>
-
                         <div className="bg-white rounded-lg shadow-sm p-6">
                           <h3 className="font-semibold mb-3 flex items-center gap-2 text-gray-900 text-base">
                             <Table className="w-4 h-4" />
@@ -1809,7 +1710,6 @@ useEffect(() => {
                                 const tables = tempDb.exec(
                                   "SELECT name FROM sqlite_master WHERE type='table'"
                                 );
-
                                 return tables[0].values.map(([tableName]) => {
                                   const data = tempDb.exec(
                                     `SELECT * FROM ${tableName}`
@@ -1832,7 +1732,6 @@ useEffect(() => {
                               }
                             })()}
                         </div>
-
                         <div className="bg-white rounded-lg shadow-sm p-6">
                           <h3 className="font-semibold mb-3 flex items-center gap-2 text-gray-900 text-base">
                             <CheckCircle className="w-4 h-4 text-green-600" />
@@ -1840,7 +1739,6 @@ useEffect(() => {
                           </h3>
                           {renderTable(activeQuestion.expectedResult)}
                         </div>
-
                         <div className="bg-white rounded-lg shadow-sm p-6">
                           <h3 className="font-semibold mb-3 flex items-center gap-2 text-gray-900 text-base">
                             <Code className="w-4 h-4" />
@@ -1860,7 +1758,6 @@ useEffect(() => {
                     )}
                   </div>
                 </div>
-
                 {/* Resizer */}
                 <div
                   className={`resizer w-1 bg-gray-300 hover:bg-blue-400 cursor-col-resize flex-shrink-0 ${
@@ -1868,7 +1765,6 @@ useEffect(() => {
                   }`}
                   onMouseDown={() => setIsDragging(true)}
                 />
-
                 {/* Right Panel - SQL Editor */}
                 <div
                   className="overflow-y-auto hide-scrollbar bg-gray-50"
@@ -1894,11 +1790,20 @@ useEffect(() => {
                                 <option value="PostgreSQL">PostgreSQL</option>
                               </select>
                               <button
-                                onClick={executeQuery}
-                                className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white hover:bg-green-700 rounded-lg transition text-sm"
+                                onClick={testQuery}
+                                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 rounded-lg transition text-sm"
+                                title="Test your query without validation"
                               >
                                 <Play className="w-4 h-4" />
-                                Run
+                                Run Query
+                              </button>
+                              <button
+                                onClick={executeQuery}
+                                className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white hover:bg-green-700 rounded-lg transition text-sm"
+                                title="Check if your solution is correct"
+                              >
+                                <CheckCircle className="w-4 h-4" />
+                                Check Solution
                               </button>
                             </div>
                           </div>
@@ -1916,7 +1821,6 @@ useEffect(() => {
                             className="w-full h-64 p-4 rounded-lg font-mono text-sm focus:outline-none resize-none bg-gray-50 text-gray-900 border border-gray-300 focus:ring-2 focus:ring-blue-500"
                           />
                         </div>
-
                         {/* {showOutput &&
                           (result || error || isCorrect !== null) && (
                             <div className="bg-white rounded-lg shadow-sm p-6">
@@ -1925,7 +1829,6 @@ useEffect(() => {
                                   Query Results
                                 </h3>
                               </div>
-
                               {isCorrect !== null && (
                                 <div
                                   className={`flex items-center gap-2 mb-4 p-4 rounded-lg ${
@@ -1952,13 +1855,11 @@ useEffect(() => {
                                   )}
                                 </div>
                               )}
-
                               {error && (
                                 <div className="border p-4 rounded-lg mb-4 border-red-200 bg-red-50 text-red-800 text-sm">
                                   <strong>Error:</strong> {error}
                                 </div>
                               )}
-
                               {result && (
                                 <div>
                                   <h4 className="font-semibold mb-3 text-sm text-gray-900">
@@ -1976,10 +1877,6 @@ useEffect(() => {
                               )}
                             </div>
                           )} */}
-
-
-
-
                           {showOutput && (result || error || isCorrect !== null) && (
   <div className="bg-white rounded-lg shadow-sm p-6">
     <div className="flex items-center justify-between mb-4">
@@ -1987,35 +1884,46 @@ useEffect(() => {
         Query Results
       </h3>
     </div>
-
     {isCorrect !== null && (
-      <div className={`flex items-center gap-2 mb-4 p-4 rounded-lg ${
+      <div className={`flex items-center justify-between gap-2 mb-4 p-4 rounded-lg ${
         isCorrect ? "bg-green-50 text-green-800" : "bg-red-50 text-red-800"
       }`}>
-        {isCorrect ? (
-          <>
-            <CheckCircle className="w-5 h-5 flex-shrink-0" />
-            <span className="font-semibold text-sm">
-              Correct! Well done! 🎉
-            </span>
-          </>
-        ) : (
-          <>
-            <XCircle className="w-5 h-5 flex-shrink-0" />
-            <span className="font-semibold text-sm">
-              Not quite right. {showTestCases ? "Check test case results below." : "Compare your output with the expected output."}
-            </span>
-          </>
+        <div className="flex items-center gap-2">
+          {isCorrect ? (
+            <>
+              <CheckCircle className="w-5 h-5 flex-shrink-0" />
+              <span className="font-semibold text-sm">
+                Correct! Well done! 🎉
+              </span>
+            </>
+          ) : (
+            <>
+              <XCircle className="w-5 h-5 flex-shrink-0" />
+              <span className="font-semibold text-sm">
+                Not quite right. {showTestCases ? "Check test case results below." : "Compare your output with the expected output."}
+              </span>
+            </>
+          )}
+        </div>
+        {isCorrect && (
+          <button
+            onClick={shareToLinkedIn}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white hover:bg-blue-700 rounded-lg transition text-xs font-medium flex-shrink-0"
+            title="Share your achievement on LinkedIn"
+          >
+            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.762 2.239 5 5 5h14c2.762 0 5-2.238 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"/>
+            </svg>
+            Share
+          </button>
         )}
       </div>
     )}
-
     {error && (
       <div className="border p-4 rounded-lg mb-4 border-red-200 bg-red-50 text-red-800 text-sm">
         <strong>Error:</strong> {error}
       </div>
     )}
-
     {/* TEST CASE RESULTS */}
     {/* {showTestCases && testCaseResults.length > 0 && (
       <div className="space-y-3 mb-4">
@@ -2087,7 +1995,6 @@ useEffect(() => {
               {tc.passed ? "✓ Passed" : "✗ Failed"}
             </span>
           </div>
-          
           {tc.error ? (
             <div className="text-sm text-red-700 mb-2 p-2 bg-red-100 rounded">
               <strong>Error:</strong> {tc.error}
@@ -2104,7 +2011,6 @@ useEffect(() => {
                   )}
                 </div>
               </div>
-              
               <div>
                 <p className="text-sm font-semibold text-gray-700 mb-2">Expected Output:</p>
                 <div className="border border-gray-300 rounded">
@@ -2123,7 +2029,6 @@ useEffect(() => {
     )}
   </div>
 )}
-
     {/* SINGLE OUTPUT (for non-test-case questions) */}
     {!showTestCases && result && (
       <div>
@@ -2141,6 +2046,43 @@ useEffect(() => {
     )}
   </div>
 )}
+                        {/* NEW: Test Query Output Section */}
+                        {showTestOutput && (testResult || testError) && (
+                          <div className="bg-white rounded-lg shadow-sm p-6 mt-4">
+                            <div className="flex items-center justify-between mb-4">
+                              <h3 className="font-semibold text-gray-900 text-base">Test Query Results</h3>
+                              <button
+                                onClick={() => {
+                                  setShowTestOutput(false);
+                                  setTestResult(null);
+                                  setTestError('');
+                                }}
+                                // className="text-gray-400 hover:text-gray-600"
+                                className="p-2 rounded-lg bg-gray-100 hover:bg-gray-100 transition"
+                                title="Close test results"
+                              >
+                                <X className="w-5 h-5" />
+                              </button>
+                            </div>
+
+                            {testError && (
+                              <div className="border p-4 rounded-lg mb-4 border-orange-200 bg-orange-50 text-orange-800 text-sm">
+                                <strong>Error:</strong> {testError}
+                              </div>
+                            )}
+
+                            {testResult && (
+                              <div>
+                                <h4 className="font-semibold mb-3 text-sm text-gray-900">Query Output:</h4>
+                                {testResult.values && testResult.values.length > 0 ? (
+                                  renderTable(testResult)
+                                ) : (
+                                  <p className="text-gray-500 text-sm">Query executed successfully. No rows returned.</p>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </>
                     ) : (
                       <div className="bg-white rounded-lg shadow-sm p-6">
@@ -2182,7 +2124,6 @@ useEffect(() => {
                     </button>
                   </div>
                 </div>
-
                 {/* Mobile Tab Content */}
                 <div className="flex-1 overflow-y-auto hide-scrollbar bg-gray-50">
                   {mobileActiveTab === "question" ? (
@@ -2228,7 +2169,6 @@ useEffect(() => {
                                 <strong>Hint:</strong> {activeQuestion.hint}
                               </p>
                             </div>
-
                             {activeQuestion.contributor && (
                               <div className="mt-3 pt-3 border-t border-gray-200">
                                 <a
@@ -2243,7 +2183,6 @@ useEffect(() => {
                               </div>
                             )}
                           </div>
-
                           <div className="bg-white rounded-lg shadow-sm p-4">
                             <h3 className="font-semibold mb-2 flex items-center gap-2 text-gray-900 text-sm">
                               <Table className="w-4 h-4" />
@@ -2257,7 +2196,6 @@ useEffect(() => {
                                   const tables = tempDb.exec(
                                     "SELECT name FROM sqlite_master WHERE type='table'"
                                   );
-
                                   return tables[0].values.map(([tableName]) => {
                                     const data = tempDb.exec(
                                       `SELECT * FROM ${tableName}`
@@ -2280,7 +2218,6 @@ useEffect(() => {
                                 }
                               })()}
                           </div>
-
                           <div className="bg-white rounded-lg shadow-sm p-4">
                             <h3 className="font-semibold mb-2 flex items-center gap-2 text-gray-900 text-sm">
                               <CheckCircle className="w-4 h-4 text-green-600" />
@@ -2288,7 +2225,6 @@ useEffect(() => {
                             </h3>
                             {renderTable(activeQuestion.expectedResult)}
                           </div>
-
                           <div className="bg-white rounded-lg shadow-sm p-4">
                             <h3 className="font-semibold mb-2 flex items-center gap-2 text-gray-900 text-sm">
                               <Code className="w-4 h-4" />
@@ -2313,27 +2249,34 @@ useEffect(() => {
                         <>
                           <div className="bg-white rounded-lg shadow-sm p-4">
                             <div className="flex flex-col gap-2 mb-3">
-                              <h3 className="font-semibold text-gray-900 text-sm">
-                                Your SQL Query
-                              </h3>
-                              <div className="flex items-center gap-2">
+                              <h3 className="font-semibold text-gray-900 text-sm">Your SQL Query</h3>
+                              <div className="flex flex-col gap-2">
                                 <select
                                   value={selectedEngine}
                                   onChange={(e) =>
                                     setSelectedEngine(e.target.value)
                                   }
-                                  className="flex-1 px-2 py-1.5 text-xs bg-gray-50 text-gray-900 border-gray-300 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                  className="w-full px-2 py-1.5 text-xs bg-gray-50 text-gray-900 border-gray-300 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                                 >
                                   <option value="SQLite">SQLite</option>
                                   <option value="PostgreSQL">PostgreSQL</option>
                                 </select>
-                                <button
-                                  onClick={executeQuery}
-                                  className="flex items-center gap-1 px-3 py-1.5 bg-green-600 text-white hover:bg-green-700 rounded-lg transition text-xs"
-                                >
-                                  <Play className="w-3 h-3" />
-                                  Run
-                                </button>
+                                <div className="flex gap-2">
+                                  <button
+                                    onClick={testQuery}
+                                    className="flex-1 flex items-center justify-center gap-1 px-3 py-2 bg-blue-600 text-white hover:bg-blue-700 rounded-lg transition text-xs font-medium"
+                                  >
+                                    <Play className="w-3 h-3" />
+                                    Test Query
+                                  </button>
+                                  <button
+                                    onClick={executeQuery}
+                                    className="flex-1 flex items-center justify-center gap-1 px-3 py-2 bg-green-600 text-white hover:bg-green-700 rounded-lg transition text-xs font-medium"
+                                  >
+                                    <CheckCircle className="w-3 h-3" />
+                                    Check Solution
+                                  </button>
+                                </div>
                               </div>
                             </div>
                             <div className="mb-2 flex items-center gap-2 text-xs text-gray-600">
@@ -2350,7 +2293,6 @@ useEffect(() => {
                               className="w-full h-48 md:h-64 p-3 rounded-lg font-mono text-xs focus:outline-none resize-none bg-gray-50 text-gray-900 border border-gray-300 focus:ring-2 focus:ring-blue-500"
                             />
                           </div>
-
                           {/* {showOutput &&
                             (result || error || isCorrect !== null) && (
                               <div className="bg-white rounded-lg shadow-sm p-4">
@@ -2359,7 +2301,6 @@ useEffect(() => {
                                     Query Results
                                   </h3>
                                 </div>
-
                                 {isCorrect !== null && (
                                   <div
                                     className={`flex items-center gap-2 mb-3 p-3 rounded-lg ${
@@ -2385,13 +2326,11 @@ useEffect(() => {
                                     )}
                                   </div>
                                 )}
-
                                 {error && (
                                   <div className="border p-3 rounded-lg mb-3 border-red-200 bg-red-50 text-red-800 text-xs">
                                     <strong>Error:</strong> {error}
                                   </div>
                                 )}
-
                                 {result && (
                                   <div>
                                     <h4 className="font-semibold mb-2 text-xs text-gray-900">
@@ -2410,7 +2349,6 @@ useEffect(() => {
                                 )}
                               </div>
                             )} */}
-
                             {showOutput &&
   (result || error || isCorrect !== null) && (
     <div className="bg-white rounded-lg shadow-sm p-4">
@@ -2419,39 +2357,43 @@ useEffect(() => {
           Query Results
         </h3>
       </div>
-
       {isCorrect !== null && (
-        <div
-          className={`flex items-center gap-2 mb-3 p-3 rounded-lg ${
-            isCorrect
-              ? "bg-green-50 text-green-800"
-              : "bg-red-50 text-red-800"
-          }`}
-        >
-          {isCorrect ? (
-            <>
-              <CheckCircle className="w-4 h-4 flex-shrink-0" />
-              <span className="font-semibold text-xs">
-                Correct! Well done! 🎉
-              </span>
-            </>
-          ) : (
-            <>
-              <XCircle className="w-4 h-4 flex-shrink-0" />
-              <span className="font-semibold text-xs">
-                Not quite right. {showTestCases ? "Check test case results below." : "Try again!"}
-              </span>
-            </>
+        <div className={`mb-3 p-3 rounded-lg ${
+          isCorrect
+            ? 'bg-green-50 text-green-800'
+            : 'bg-red-50 text-red-800'
+        }`}>
+          <div className="flex items-center gap-2 mb-2">
+            {isCorrect ? (
+              <>
+                <CheckCircle className="w-4 h-4 flex-shrink-0" />
+                <span className="font-semibold text-xs">Correct! Well done! 🎉</span>
+              </>
+            ) : (
+              <>
+                <XCircle className="w-4 h-4 flex-shrink-0" />
+                <span className="font-semibold text-xs">Not quite right. Try again!</span>
+              </>
+            )}
+          </div>
+          {isCorrect && (
+            <button
+              onClick={shareToLinkedIn}
+              className="w-full flex items-center justify-center gap-1.5 px-3 py-2 bg-blue-600 text-white hover:bg-blue-700 rounded-lg transition text-xs font-medium mt-2"
+            >
+              <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.762 2.239 5 5 5h14c2.762 0 5-2.238 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"/>
+              </svg>
+              Share on LinkedIn
+            </button>
           )}
         </div>
       )}
-
       {error && (
         <div className="border p-3 rounded-lg mb-3 border-red-200 bg-red-50 text-red-800 text-xs">
           <strong>Error:</strong> {error}
         </div>
       )}
-
       {/* TEST CASE RESULTS - MOBILE */}
       {/* {showTestCases && testCaseResults.length > 0 && (
         <div className="space-y-2 mb-3">
@@ -2501,8 +2443,6 @@ useEffect(() => {
           )}
         </div>
       )} */}
-
-
       {/* TEST CASE RESULTS - MOBILE */}
 {showTestCases && testCaseResults.length > 0 && (
   <div className="space-y-2 mb-3">
@@ -2525,7 +2465,6 @@ useEffect(() => {
               {tc.passed ? "✓ Pass" : "✗ Fail"}
             </span>
           </div>
-          
           {tc.error ? (
             <div className="text-xs text-red-700 mb-2 p-2 bg-red-100 rounded">
               <strong>Error:</strong> {tc.error}
@@ -2542,7 +2481,6 @@ useEffect(() => {
                   )}
                 </div>
               </div>
-              
               <div>
                 <p className="text-xs font-semibold text-gray-700 mb-1">Expected:</p>
                 <div className="border border-gray-300 rounded">
@@ -2561,7 +2499,6 @@ useEffect(() => {
     )}
   </div>
 )}
-
       {/* SINGLE OUTPUT (for non-test-case questions) - MOBILE */}
       {!showTestCases && result && (
         <div>
@@ -2581,6 +2518,43 @@ useEffect(() => {
       )}
     </div>
   )}
+                        {/* NEW: Mobile Test Query Output */}
+                        {showTestOutput && (testResult || testError) && (
+                          <div className="bg-white rounded-lg shadow-sm p-4 mt-3">
+                            <div className="flex items-center justify-between mb-3">
+                              <h3 className="font-semibold text-gray-900 text-sm">Test Results</h3>
+                              <button
+                                onClick={() => {
+                                  setShowTestOutput(false);
+                                  setTestResult(null);
+                                  setTestError('');
+                                }}
+                                // className="text-gray-400 hover:text-gray-600"
+                                className="p-2 rounded-lg bg-gray-100 hover:bg-gray-100 transition"
+                                title="Close test results"
+                              >
+                                <X className="w-4 h-4" />
+                              </button>
+                            </div>
+
+                            {testError && (
+                              <div className="border p-3 rounded-lg mb-3 border-orange-200 bg-orange-50 text-orange-800 text-xs">
+                                <strong>Error:</strong> {testError}
+                              </div>
+                            )}
+
+                            {testResult && (
+                              <div>
+                                <h4 className="font-semibold mb-2 text-xs text-gray-900">Query Output:</h4>
+                                {testResult.values && testResult.values.length > 0 ? (
+                                  renderTable(testResult)
+                                ) : (
+                                  <p className="text-gray-500 text-xs">Query executed successfully. No rows returned.</p>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        )}
                         </>
                       ) : (
                         <div className="bg-white rounded-lg shadow-sm p-6">
@@ -2600,6 +2574,4 @@ useEffect(() => {
     </div>
   );
 };
-
 export default SQLPracticePlatform;
-
