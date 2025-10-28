@@ -528,61 +528,191 @@ const SQLPracticePlatform = ({ onNavigate }) => {
   const GITHUB_REPO = "sqlunlimited/sql_questions";
   const GITHUB_BRANCH = "main";
   const QUESTIONS_FOLDER = "questions";
+
+
+
+
+  // const loadQuestionsFromGitHub = async () => {
+  //   setLoadingQuestions(true);
+  //   setQuestions([]);
+  //   setQuestionsLoaded(0);
+  //   setTotalQuestions(0);
+  //   try {
+  //     const treeUrl = `https://api.github.com/repos/${GITHUB_REPO}/git/trees/${GITHUB_BRANCH}?recursive=1`;
+  //     const treeResponse = await fetch(treeUrl);
+  //     if (!treeResponse.ok) {
+  //       throw new Error("Failed to fetch repository tree");
+  //     }
+  //     const treeData = await treeResponse.json();
+  //     const questionFiles = treeData.tree.filter(
+  //       (item) =>
+  //         item.path.startsWith(QUESTIONS_FOLDER) &&
+  //         item.path.endsWith(".json") &&
+  //         item.type === "blob"
+  //     );
+  //     setTotalQuestions(questionFiles.length);
+  //     const loadPromises = questionFiles.map(async (file) => {
+  //       try {
+  //         const cdnUrl = `https://cdn.jsdelivr.net/gh/${GITHUB_REPO}@${GITHUB_BRANCH}/${file.path}`;
+  //         const fileResponse = await fetch(cdnUrl);
+  //         if (!fileResponse.ok) {
+  //           throw new Error(`Failed to fetch ${file.path}`);
+  //         }
+  //         const questionData = await fileResponse.json();
+  //         const fileName = file.path.split("/").pop();
+  //         const persistentId = fileName.replace(".json", "");
+  //         const newQuestion = {
+  //           ...questionData,
+  //           id: persistentId,
+  //           filename: fileName,
+  //         };
+  //         setQuestionsLoaded((prev) => prev + 1);
+  //         return newQuestion;
+  //       } catch (err) {
+  //         console.error(`Error loading ${file.path}:`, err);
+  //         setQuestionsLoaded((prev) => prev + 1);
+  //         return null;
+  //       }
+  //     });
+  //     const loadedQuestions = await Promise.all(loadPromises);
+  //     const validQuestions = loadedQuestions.filter((q) => q !== null);
+  //     const sortedQuestions = validQuestions.sort((a, b) =>
+  //       a.id.localeCompare(b.id)
+  //     );
+  //     setQuestions(sortedQuestions);
+  //   } catch (err) {
+  //     console.error("Error loading questions from GitHub:", err);
+  //     setQuestions([]);
+  //   } finally {
+  //     setLoadingQuestions(false);
+  //   }
+  // };
+
+
+
+
+
+
   const loadQuestionsFromGitHub = async () => {
-    setLoadingQuestions(true);
-    setQuestions([]);
-    setQuestionsLoaded(0);
-    setTotalQuestions(0);
+  setLoadingQuestions(true);
+  // Don't clear existing questions until we successfully load new ones
+  setQuestionsLoaded(0);
+  setTotalQuestions(0);
+  
+  try {
+    // Step 1: Get latest commit SHA for cache-busting (with fallback)
+    let commitShaOrBranch = GITHUB_BRANCH; // Default fallback
     try {
-      const treeUrl = `https://api.github.com/repos/${GITHUB_REPO}/git/trees/${GITHUB_BRANCH}?recursive=1`;
-      const treeResponse = await fetch(treeUrl);
-      if (!treeResponse.ok) {
-        throw new Error("Failed to fetch repository tree");
+      const refsUrl = `https://api.github.com/repos/${GITHUB_REPO}/git/refs/heads/${GITHUB_BRANCH}`;
+      const refsResponse = await fetch(refsUrl);
+      if (refsResponse.ok) {
+        const refsData = await refsResponse.json();
+        commitShaOrBranch = refsData.object.sha;
+        console.log('✅ Using commit SHA for cache-busting:', commitShaOrBranch.substring(0, 8));
+      } else {
+        console.warn('⚠️ Could not fetch commit SHA, using branch name. Status:', refsResponse.status);
+        // Add timestamp as fallback cache-buster
+        commitShaOrBranch = `${GITHUB_BRANCH}?cb=${Date.now()}`;
       }
-      const treeData = await treeResponse.json();
-      const questionFiles = treeData.tree.filter(
-        (item) =>
-          item.path.startsWith(QUESTIONS_FOLDER) &&
-          item.path.endsWith(".json") &&
-          item.type === "blob"
-      );
-      setTotalQuestions(questionFiles.length);
-      const loadPromises = questionFiles.map(async (file) => {
-        try {
-          const cdnUrl = `https://cdn.jsdelivr.net/gh/${GITHUB_REPO}@${GITHUB_BRANCH}/${file.path}`;
-          const fileResponse = await fetch(cdnUrl);
-          if (!fileResponse.ok) {
-            throw new Error(`Failed to fetch ${file.path}`);
-          }
-          const questionData = await fileResponse.json();
-          const fileName = file.path.split("/").pop();
-          const persistentId = fileName.replace(".json", "");
-          const newQuestion = {
-            ...questionData,
-            id: persistentId,
-            filename: fileName,
-          };
-          setQuestionsLoaded((prev) => prev + 1);
-          return newQuestion;
-        } catch (err) {
-          console.error(`Error loading ${file.path}:`, err);
-          setQuestionsLoaded((prev) => prev + 1);
-          return null;
-        }
-      });
-      const loadedQuestions = await Promise.all(loadPromises);
-      const validQuestions = loadedQuestions.filter((q) => q !== null);
-      const sortedQuestions = validQuestions.sort((a, b) =>
-        a.id.localeCompare(b.id)
-      );
-      setQuestions(sortedQuestions);
-    } catch (err) {
-      console.error("Error loading questions from GitHub:", err);
-      setQuestions([]);
-    } finally {
-      setLoadingQuestions(false);
+    } catch (refError) {
+      console.warn('⚠️ Error fetching commit SHA, using branch with timestamp:', refError.message);
+      commitShaOrBranch = `${GITHUB_BRANCH}?cb=${Date.now()}`;
     }
-  };
+
+    // Step 2: Get file tree
+    const treeUrl = `https://api.github.com/repos/${GITHUB_REPO}/git/trees/${GITHUB_BRANCH}?recursive=1`;
+    const treeResponse = await fetch(treeUrl);
+    
+    if (!treeResponse.ok) {
+      throw new Error(`Failed to fetch repository tree. Status: ${treeResponse.status}`);
+    }
+    
+    const treeData = await treeResponse.json();
+    
+    // Step 3: Filter question files
+    const questionFiles = treeData.tree.filter(
+      (item) =>
+        item.path.startsWith(QUESTIONS_FOLDER) &&
+        item.path.endsWith(".json") &&
+        item.type === "blob"
+    );
+
+    if (questionFiles.length === 0) {
+      console.error('❌ No question files found in repository');
+      throw new Error('No question files found in the repository');
+    }
+
+    setTotalQuestions(questionFiles.length);
+    console.log(`📚 Found ${questionFiles.length} question files`);
+
+    // Step 4: Load all questions
+    const loadPromises = questionFiles.map(async (file) => {
+      try {
+        const cdnUrl = `https://cdn.jsdelivr.net/gh/${GITHUB_REPO}@${commitShaOrBranch}/${file.path}`;
+        
+        const fileResponse = await fetch(cdnUrl, {
+          cache: 'default', // Use browser cache when appropriate
+          headers: {
+            'Accept': 'application/json'
+          }
+        });
+        
+        if (!fileResponse.ok) {
+          console.error(`❌ Failed to fetch ${file.path}: ${fileResponse.status}`);
+          throw new Error(`Failed to fetch ${file.path}`);
+        }
+        
+        const questionData = await fileResponse.json();
+        const fileName = file.path.split("/").pop();
+        const persistentId = fileName.replace(".json", "");
+        
+        const newQuestion = {
+          ...questionData,
+          id: persistentId,
+          filename: fileName,
+        };
+        
+        setQuestionsLoaded((prev) => prev + 1);
+        return newQuestion;
+      } catch (err) {
+        console.error(`❌ Error loading ${file.path}:`, err);
+        setQuestionsLoaded((prev) => prev + 1);
+        return null; // Return null for failed loads
+      }
+    });
+
+    const loadedQuestions = await Promise.all(loadPromises);
+    const validQuestions = loadedQuestions.filter((q) => q !== null);
+    
+    if (validQuestions.length === 0) {
+      throw new Error('Failed to load any valid questions');
+    }
+    
+    const sortedQuestions = validQuestions.sort((a, b) =>
+      a.id.localeCompare(b.id)
+    );
+
+    console.log(`✅ Successfully loaded ${validQuestions.length}/${questionFiles.length} questions`);
+    
+    // Only update questions state if we successfully loaded some
+    setQuestions(sortedQuestions);
+    
+  } catch (err) {
+    console.error("❌ Critical error loading questions from GitHub:", err);
+    setError(`Failed to load questions: ${err.message}. Please refresh the page.`);
+    
+    // Keep existing questions if available (don't wipe them)
+    if (questions.length === 0) {
+      setQuestions([]); // Only clear if already empty
+    }
+  } finally {
+    setLoadingQuestions(false);
+  }
+};
+
+
+
+
   // Load SQL.js and PGlite
   useEffect(() => {
     const loadEngines = async () => {
