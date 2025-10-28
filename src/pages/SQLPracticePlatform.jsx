@@ -502,29 +502,65 @@ const SQLPracticePlatform = ({ onNavigate }) => {
       document.body.style.userSelect = "";
     };
   }, [isDragging, isMobile]);
-  useEffect(() => {
-    if (questions.length > 0 && questionId) {
-      const index = questions.findIndex(q => q.id === questionId);
-      if (index !== -1) {
+
+  
+  // useEffect(() => {
+  //   if (questions.length > 0 && questionId) {
+  //     const index = questions.findIndex(q => q.id === questionId);
+  //     if (index !== -1) {
+  //       setCurrentQuestion(index);
+  //     } else {
+  //       // Question not found, redirect to first question
+  //       navigate(`/practice/${questions[0].id}`, { replace: true });
+  //     }
+  //   } else if (questions.length > 0 && !questionId) {
+  //     // No question in URL, redirect to first question
+  //     navigate(`/practice/${questions[0].id}`, { replace: true });
+  //   }
+  // }, [questionId, questions, navigate]);
+
+
+  // // NEW: Update URL when question changes
+  // useEffect(() => {
+  //   if (questions.length > 0 && questions[currentQuestion]) {
+  //     const currentQuestionId = questions[currentQuestion].id;
+  //     if (questionId !== currentQuestionId) {
+  //       navigate(`/practice/${currentQuestionId}`, { replace: true });
+  //     }
+  //   }
+  // }, [currentQuestion, questions, navigate, questionId]);
+
+
+
+
+
+  // Single source of truth: URL drives everything
+useEffect(() => {
+  if (questions.length === 0) return; // Wait for questions to load
+
+  if (questionId) {
+    // URL has a question ID - sync state to match
+    const index = questions.findIndex(q => q.id === questionId);
+    if (index !== -1) {
+      // Question found - update state only if different
+      if (currentQuestion !== index) {
         setCurrentQuestion(index);
-      } else {
-        // Question not found, redirect to first question
-        navigate(`/practice/${questions[0].id}`, { replace: true });
       }
-    } else if (questions.length > 0 && !questionId) {
-      // No question in URL, redirect to first question
+    } else {
+      // Question not found in list - redirect to first
       navigate(`/practice/${questions[0].id}`, { replace: true });
     }
-  }, [questionId, questions, navigate]);
-  // NEW: Update URL when question changes
-  useEffect(() => {
-    if (questions.length > 0 && questions[currentQuestion]) {
-      const currentQuestionId = questions[currentQuestion].id;
-      if (questionId !== currentQuestionId) {
-        navigate(`/practice/${currentQuestionId}`, { replace: true });
-      }
-    }
-  }, [currentQuestion, questions, navigate, questionId]);
+  } else {
+    // No question ID in URL - redirect to first question
+    navigate(`/practice/${questions[0].id}`, { replace: true });
+  }
+}, [questionId, questions.length]); // Only depend on URL and questions length, NOT currentQuestion
+
+
+
+
+
+
   const GITHUB_REPO = "sqlunlimited/sql_questions";
   const GITHUB_BRANCH = "main";
   const QUESTIONS_FOLDER = "questions";
@@ -644,7 +680,7 @@ const SQLPracticePlatform = ({ onNavigate }) => {
 
     setTotalQuestions(questionFiles.length);
     console.log(`📚 Found ${questionFiles.length} question files`);
-
+    
     // Step 4: Load all questions
     const loadPromises = questionFiles.map(async (file) => {
       try {
@@ -758,13 +794,17 @@ const SQLPracticePlatform = ({ onNavigate }) => {
       loadQuestionsFromGitHub();
     }
   }, []);
+
+
+
+  
   // Initialize database with current question's schema
   useEffect(() => {
     const initializeDatabases = async () => {
       if (questions.length > 0 && questions[currentQuestion]) {
         const schema = questions[currentQuestion].schema;
         if (SQL) {
-          try {
+          try { 
             const newDb = new SQL.Database();
             newDb.exec(schema);
             setDb(newDb);
@@ -1490,7 +1530,7 @@ const SQLPracticePlatform = ({ onNavigate }) => {
                     <button
                       key={q.id}
                       onClick={() => {
-                        setCurrentQuestion(actualIndex);
+                        navigate(`/practice/${q.id}`);
                         setShowMobileQuestionsList(false);
                       }}
                       className={`w-full text-left p-3 rounded-lg transition ${isActive
@@ -1645,7 +1685,8 @@ const SQLPracticePlatform = ({ onNavigate }) => {
                       return (
                         <div key={q.id} className="px-2 mb-2">
                           <button
-                            onClick={() => setCurrentQuestion(actualIndex)}
+                          key={q.id}
+                            onClick={() => navigate(`/practice/${q.id}`)}
                             className={`w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold transition-all relative ${getQuestionButtonColor(
                               q,
                               isActive
@@ -1719,9 +1760,9 @@ const SQLPracticePlatform = ({ onNavigate }) => {
                         const isActive = currentQuestion === actualIndex;
                         return (
                           <button
-                            key={q.id}
-                            onClick={() => setCurrentQuestion(actualIndex)}
-                            className={`w-full text-left p-3 rounded-lg transition ${isActive
+                          key={q.id}
+  onClick={() => navigate(`/practice/${q.id}`)}
+  className={`w-full text-left p-3 rounded-lg transition ${isActive
                                 ? "bg-blue-50 border-2 border-blue-600"
                                 : isCompleted
                                   ? "bg-green-50 border-2 border-green-600"
